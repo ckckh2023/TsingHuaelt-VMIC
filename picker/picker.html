@@ -2,27 +2,31 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>VMIC · 选择本地音频</title>
-  <style>
-    body { font: 14px/1.7 "Microsoft YaHei", system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; color: #222; }
-    h1 { color: #1a4f8b; font-size: 20px; }
-    .card { border: 1px solid #e3e6ea; border-radius: 8px; padding: 16px 20px; background: #fafbfc; margin-top: 12px; }
-    .hint { color: #888; font-size: 13px; margin: 8px 0; }
-    #status { color: #b4550b; min-height: 20px; margin-top: 8px; }
-    #info { color: #1a7f4b; }
-  </style>
+  <title>VMIC · 添加本地音频</title>
+  <link rel="stylesheet" href="picker.css">
 </head>
 <body>
-  <h1>VMIC · 选择本地音频（输入源）</h1>
+  <h1>VMIC · 选择本地音频</h1>
   <p class="hint">
-    这是独立的整页设置页，不会被文件选择器抢焦点而关闭。
-    选完文件即持久保存，关掉本页、刷新网页都不会丢失；只有在这里重新选择才会更换。
+    独立整页不会被文件选择器抢焦点而关闭。可<b>一次多选文件</b>，或<b>选择整个文件夹</b>
+    （自动挑出其中所有音频，含子文件夹，列表里会显示相对路径）；<br>
+    添加后进入扩展弹窗的“播放列表”并自动设为<b>当前文件</b>。建议单文件 ≤ 20MB。
   </p>
   <div class="card">
-    <input type="file" id="file" accept="audio/*">
-    <div id="info">当前：读取中…</div>
-    <div id="status"></div>
+    <div class="row">
+      <button type="button" id="btnFiles" class="primary">＋ 选择文件…</button>
+      <button type="button" id="btnFolder" class="primary">＋ 选择文件夹…</button>
+    </div>
+    <input type="file" id="file" accept="audio/*" multiple hidden>
+    <input type="file" id="folder" webkitdirectory multiple hidden>
+    <div id="status" class="status">就绪。</div>
   </div>
-  <script src="options.js"></script>
+  <div class="card">
+    <div class="label">当前列表 <span id="listMeta" class="meta"></span></div>
+    <ul id="list" class="list"></ul>
+    <div class="hint">点右侧 ✕ 可删除（再点一次确认）；切换“当前文件”请回到扩展弹窗操作。</div>
+  </div>
+  <script src="../lib/idb.js"></script>
+  <script src="picker.js"></script>
 </body>
 </html>

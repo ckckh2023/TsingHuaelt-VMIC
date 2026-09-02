@@ -1,81 +1,73 @@
-// Service Worker：音频文件与状态的"仓库"+ 消息路由
+// Service Worker：音频文件库与状态的"仓库"+ 消息路由
+// 数据模型（IndexedDB store 'kv'，读写工具见 lib/idb.js）:
+//   file:<id> -> { buf: ArrayBuffer, mime, name }   每个音频文件本体（二进制）
+//   list      -> [{ id, name, size, mime, addedAt }] 播放列表元信息（数组顺序=显示顺序）
+//   cur       -> 当前选中的音频 id（页面注入/播放只针对"当前文件"）
 // 关键约束（本扩展踩过的坑）:
 //  1) chrome.storage 是 JSON 序列化, 存不了 ArrayBuffer(会变成 {})
 //  2) chrome.runtime 消息传递默认也是 JSON 序列化, File/Blob/ArrayBuffer
 //     都可能被破坏(File/Blob -> {})
 // 因此:
-//  - 二进制音频存【扩展源的 IndexedDB】(结构化克隆, 无 JSON 问题)
+//  - 二进制音频只进【IndexedDB】(结构化克隆, 无 JSON 问题)
 //  - 跨上下文传递一律用【base64 字符串】(JSON 安全), 由接收方解码
-//  - 文件选择放在【整页 options.html】(不会被弹窗失焦关闭), 直接写 IndexedDB
+//  - 文件选择放在【整页 picker.html】(不会被弹窗失焦关闭), 只负责把新文件
+//    写入 file:<id>；列表登记(list/cur)统一由本 SW 维护，避免并发改列表
+
+importScripts('../lib/idb.js');
 
 const DEFAULTS = {
-  enabled: false,   // 是否启用注入（页面只拿插件音频）
-  delayMs: 800,     // 自动模式下：创建伪流后延时多少毫秒再出声（对齐站内倒计时）
-  volume: 1,        // 录音/试听音量
-  monitor: true,    // 外放试听：扬声器能听到正在录的声音（作为"开始播放"提示）
-  loop: false,      // 循环播放
-  mode: 'auto'      // auto=录音请求到达即自动从头播放; manual=手动点播放再出声
+  enabled: true,   // 是否启用注入。默认【启用】：不启用独占时本扩展完全无法发挥作用
+  delayMs: 800,    // 自动模式下：创建伪流后延时多少毫秒再出声（对齐站内倒计时）
+  volume: 1,       // 录音/试听音量
+  monitor: true,   // 外放试听：扬声器能听到正在录的声音（作为"开始播放"提示）
+  loop: false,     // 循环播放
+  mode: 'auto'     // auto=录音请求到达即自动从头播放; manual=手动点播放再出声
 };
 
-// ---------- IndexedDB(存音频二进制) ----------
-const DB_NAME = 'vmic-db';
-const DB_VER = 1;
-const STORE = 'kv';
-let dbp = null;
+// 说明：状态用 chrome.storage.session（每次浏览器会话从 DEFAULTS 起步，
+// 因此"默认启用"在每个新会话都成立；用户手动关闭仅当次会话内保持）。
 
-function openDB() {
-  if (!dbp) {
-    dbp = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VER);
-      req.onupgradeneeded = () => {
-        if (!req.result.objectStoreNames.contains(STORE)) {
-          req.result.createObjectStore(STORE);
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  return dbp;
+// ---------- 文件库 ----------
+function uid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
-function idbPut(key, value) {
-  return openDB().then((db) => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  }));
+// 当前选中的音频文件: { id, buf, mime, name } 或 null
+async function readCurFile() {
+  const cur = await idbGet('cur');
+  if (!cur) return null;
+  const rec = await idbGet('file:' + cur);
+  return (rec && rec.buf instanceof ArrayBuffer)
+    ? { id: cur, buf: rec.buf, mime: rec.mime || 'audio/mpeg', name: rec.name || '' }
+    : null;
 }
 
-function idbGet(key) {
-  return openDB().then((db) => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const rq = tx.objectStore(STORE).get(key);
-    rq.onsuccess = () => resolve(rq.result);
-    rq.onerror = () => reject(rq.error);
-  }));
+async function getLib() {
+  const list = (await idbGet('list')) || [];
+  const cur = await idbGet('cur');
+  return { list, currentId: cur };
 }
 
-async function idbDel(key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-// 音频在 IDB 中的形态: { buf: ArrayBuffer, mime: string }
-async function readAudio() {
+// v0.3 -> v0.4 迁移：旧版单文件记录 {buf,mime}(key 'audio') 转成文件库首项
+(async function migrateV03() {
   try {
-    const rec = await idbGet('audio');
-    return (rec && rec.buf instanceof ArrayBuffer) ? rec : null;
-  } catch (_) {
-    return null;
-  }
-}
+    if (await idbGet('list')) return;   // 已有新库则跳过
+    const old = await idbGet('audio');
+    if (!old || !(old.buf instanceof ArrayBuffer)) return;
+    const id = uid();
+    const meta = {
+      id, name: '我的音频',
+      size: old.buf.byteLength,
+      mime: old.mime || 'audio/mpeg',
+      addedAt: Date.now()
+    };
+    await idbPut('file:' + id, { buf: old.buf, mime: meta.mime, name: meta.name });
+    await idbPut('list', [meta]);
+    await idbPut('cur', id);
+    await idbDel('audio');
+  } catch (_) { /* 迁移失败不影响新库路径 */ }
+})();
 
 // ArrayBuffer -> base64(跨上下文消息传递只走 JSON 安全的字符串)
 function bufToB64(buf) {
@@ -112,15 +104,28 @@ async function pushToPages(payload) {
   } catch (_) { /* ignore */ }
 }
 
+// 把"当前文件"推给所有打开的页面（页面按内容签名去重，换文件才会重解码）
+async function pushCurrentAudio() {
+  const rec = await readCurFile();
+  await pushToPages(rec
+    ? { audio: bufToB64(rec.buf), mime: rec.mime }
+    : { clearAudio: true });
+}
+
+// 显式清空页面里的音频（区别于"空推送"，避免误清现有文件源）
+async function pushClearAudio() {
+  await pushToPages({ clearAudio: true });
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     switch (msg && msg.cmd) {
-      case 'getState': {           // bridge -> SW
+      case 'getState': {           // bridge/settings/popup -> SW
         sendResponse({ ok: true, state: await readState() });
         return;
       }
-      case 'getAudio': {           // bridge -> SW（回传 base64 字符串, JSON 安全）
-        const rec = await readAudio();
+      case 'getAudio': {           // bridge -> SW（当前文件 base64, JSON 安全）
+        const rec = await readCurFile();
         sendResponse({
           ok: true,
           audio: rec ? bufToB64(rec.buf) : null,
@@ -128,25 +133,64 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         });
         return;
       }
-      case 'audioInfo': {          // popup/options -> SW（只回大小, 不回文件本体）
-        const rec = await readAudio();
-        sendResponse({
-          ok: true,
-          size: rec ? rec.buf.byteLength : 0,
-          mime: rec ? rec.mime : 'audio/mpeg'
-        });
+      case 'getLib': {             // popup/picker -> SW（播放列表元信息）
+        const lib = await getLib();
+        sendResponse({ ok: true, list: lib.list, currentId: lib.currentId });
         return;
       }
-      case 'broadcastAudio': {     // options 已把新文件写入 IndexedDB -> 广播给页面
-        const rec = await readAudio();
-        sendResponse({ ok: true });
-        await pushToPages({
-          audio: rec ? bufToB64(rec.buf) : null,
-          mime: rec ? rec.mime : 'audio/mpeg'
-        });
+      case 'addFile': {            // picker 已把二进制写入 file:<id> -> 登记入列表并设为当前
+        const f = (msg && msg.file) || {};
+        const rec = await idbGet('file:' + f.id);
+        if (!f.id || !(rec && rec.buf instanceof ArrayBuffer)) {
+          sendResponse({ ok: false, error: 'file not stored' });
+          return;
+        }
+        const lib = await getLib();
+        const meta = {
+          id: f.id,
+          name: String(f.name || 'audio'),
+          size: Number(f.size) || rec.buf.byteLength,
+          mime: f.mime || rec.mime || 'audio/mpeg',
+          addedAt: Date.now()
+        };
+        const list = [...lib.list.filter((x) => x.id !== f.id), meta];
+        await idbPut('list', list);
+        await idbPut('cur', f.id);
+        sendResponse({ ok: true, list, currentId: f.id });
+        if (!msg.silent) await pushCurrentAudio(); // 批量导入(silent)只在最后一个文件后推送一次
         return;
       }
-      case 'setState': {           // popup -> SW
+      case 'selectAudio': {        // popup 点列表行 -> 切换当前文件并推给页面
+        const lib = await getLib();
+        if (!msg.id || !lib.list.some((x) => x.id === msg.id)) {
+          sendResponse({ ok: false, error: 'not found: ' + msg.id });
+          return;
+        }
+        await idbPut('cur', msg.id);
+        sendResponse({ ok: true, list: lib.list, currentId: msg.id });
+        await pushCurrentAudio();
+        return;
+      }
+      case 'removeAudio': {        // popup 删除列表项
+        const lib = await getLib();
+        if (!msg.id || !lib.list.some((x) => x.id === msg.id)) {
+          sendResponse({ ok: false, error: 'not found: ' + msg.id });
+          return;
+        }
+        const list = lib.list.filter((x) => x.id !== msg.id);
+        await idbPut('list', list);
+        await idbDel('file:' + msg.id);
+        const wasCur = lib.currentId === msg.id;
+        const cur = wasCur ? (list.length ? list[0].id : null) : lib.currentId;
+        if (cur) await idbPut('cur', cur); else await idbDel('cur');
+        sendResponse({ ok: true, list, currentId: cur });
+        if (wasCur) {
+          if (cur) await pushCurrentAudio(); // 自动切到列表第一项
+          else await pushClearAudio();       // 删到空 -> 页面清空, 回静音兜底
+        }
+        return;
+      }
+      case 'setState': {           // settings/popup -> SW
         const next = await writeState(msg.patch || {});
         sendResponse({ ok: true, state: next });
         await pushToPages({ state: next });

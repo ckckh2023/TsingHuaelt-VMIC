@@ -1,4 +1,4 @@
-// MAIN world：本扩展的"心脏" v0.2
+// MAIN world：本扩展的"心脏" v0.4（多文件播放列表：页面始终持有"当前文件"）
 // 引擎改为 AudioContext 方案，解决 v0.1 两个问题：
 //  1) <audio>.play() 受自动播放策略限制 + 消息触发无声  -> 改用 AudioContext，
 //     播放/监听走 WebAudio，站点手势或页面点击后必定有声
@@ -17,7 +17,7 @@
   const TOKEN = 'VMIC_TSINGHUAELT_01';
 
   const state = {
-    enabled: false,    // 注入开关
+    enabled: true,     // 注入开关（默认启用；停用需去设置页，页面才走真实麦克风）
     delayMs: 800,      // 自动模式: 伪流创建后多少 ms 再出声(对齐倒计时)
     volume: 1,         // 录音/试听共用音量
     monitor: true,     // 外放试听(扬声器可听到正在录的声音)
@@ -73,6 +73,7 @@
     if (d.kind === 'state' && d.state) { applyState(d.state); everSynced = true; }
     if (d.kind === 'audio' && d.audio !== undefined) { setAudioData(d.audio); everSynced = true; }
     if (d.kind === 'sync') {
+      if (d.clearAudio) { clearAudio(); everSynced = true; } // 列表删空/删当前文件 -> 显式清空（区别于空推送）
       if (d.state) { applyState(d.state); everSynced = true; }
       if (d.audio !== undefined) { setAudioData(d.audio); everSynced = true; }
       if (d.transport) doTransport(d.transport);
@@ -84,6 +85,16 @@
     Object.assign(state, patch || {});
     if (state.enabled === false && prev.enabled === true) stopRec(); // 关闭注入即停
     applyVolume();
+  }
+
+  // 显式清空当前文件源。与 setAudioData 的"空推送不误清"守卫互补：
+  // 只有这里能主动清掉现有文件（删除当前文件/列表删空时由 SW 广播触发）。
+  function clearAudio() {
+    stopRec();
+    audioRaw = null;
+    audioBuffer = null;
+    decodeDone = true;
+    state.audioSig = '';
   }
 
   // ---------- 输入模块: 解码本地音频 ----------
@@ -221,10 +232,12 @@
   async function ensureReady() {
     // 只在【从未收到过首次同步】时补发一次 hello(覆盖 bridge 加载竞态)。
     // 同步完成后, 录音流程绝不主动去拉取/刷新音频——
-    // 文件源的更新只发生在 popup 换文件(setAudio 广播)这一条用户主动路径上。
+    // 文件源的更新只发生在 popup/picker 切换文件(广播)这一条用户主动路径上。
+    // 默认启用后 gUM 可能先于 bridge 的首次推送到达: 必须等 everSynced
+    // 再放行, 否则会误判"无文件"而立即返回静音流。
     if (!everSynced) postToBridge({ kind: 'hello' });
     for (let i = 0; i < 80; i++) {            // 最多等 ~4s(解码较慢的大文件)
-      if (audioRaw === null || decodeDone) return;
+      if (everSynced && (audioRaw === null || decodeDone)) return;
       await waitMs(50);
     }
   }

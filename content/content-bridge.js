@@ -48,6 +48,7 @@
     if (msg.state) payload.state = msg.state;
     if (msg.audio !== undefined) payload.audio = msg.audio;
     if (msg.mime) payload.mime = msg.mime;
+    if (msg.clearAudio) payload.clearAudio = true;
     if (msg.transport) payload.transport = msg.transport;
     postToMain({ kind: 'sync', ...payload });
   });

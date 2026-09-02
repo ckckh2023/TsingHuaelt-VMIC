@@ -1,22 +1,71 @@
 body {
-  width: 340px;
+  width: 360px;
   margin: 0;
   padding: 12px 14px;
   font: 13px/1.6 "Microsoft YaHei", system-ui, sans-serif;
   color: #222;
   background: #fafbfc;
 }
-h1 { font-size: 15px; margin: 0 0 10px; color: #1a4f8b; }
-.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-.switch span { cursor: pointer; }
+h1 { font-size: 15px; margin: 0 0 6px; color: #1a4f8b; }
+.hint { color: #888; font-size: 12px; margin-top: 4px; }
+.meta { font-weight: 400; color: #999; font-size: 12px; }
+
+.stateline { margin-bottom: 2px; color: #1a7f4b; font-size: 12px; }
+.stateline.off { color: #b4550b; }
+
 .group {
   border-top: 1px solid #e3e6ea;
   padding: 8px 0 4px;
   margin-top: 6px;
 }
 .label { font-weight: 600; color: #444; margin-bottom: 4px; }
-select { width: 100%; box-sizing: border-box; }
-#btnPick {
+
+ul.list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  max-height: 168px;
+  overflow-y: auto;
+}
+ul.list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  margin: 3px 0;
+  border: 1px solid #e3e6ea;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+ul.list li:hover { border-color: #1a4f8b; }
+ul.list li.cur { border-color: #1a4f8b; background: #eaf2fb; }
+ul.list li .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #c9cfd6; flex: none;
+}
+ul.list li.cur .dot { background: #1a4f8b; }
+ul.list li .flag {
+  flex: none; font-size: 11px; color: #1a4f8b; background: #dbe9f7;
+  border-radius: 3px; padding: 0 4px;
+}
+ul.list li .nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+ul.list li .sz { color: #999; font-size: 11px; flex: none; }
+ul.list li .rm {
+  border: none; background: transparent; color: #bbb;
+  font-size: 13px; cursor: pointer; flex: none; padding: 0 2px; line-height: 1;
+}
+ul.list li .rm:hover { color: #c0392b; }
+ul.list li .rm.confirm { color: #c0392b; font-weight: 700; font-size: 12px; }
+ul.list li.empty { cursor: default; color: #999; justify-content: center; }
+
+/* 主按钮（选择文件 / 播放 / 暂停 / 重播 统一效果） */
+.primary {
   width: 100%;
   padding: 7px 0;
   border: 1px solid #1a4f8b;
@@ -26,17 +75,18 @@ select { width: 100%; box-sizing: border-box; }
   font-size: 13px;
   cursor: pointer;
 }
-#btnPick:hover { background: #1a5fb0; }
-input[type="range"] { flex: 1; }
-.hint { color: #888; font-size: 12px; }
-.btns button {
-  flex: 1;
-  padding: 5px 0;
-  border: 1px solid #c9cfd6;
-  border-radius: 5px;
-  background: #fff;
-  cursor: pointer;
+.primary:hover { background: #1a5fb0; }
+.primary:active { background: #163e6e; }
+
+.row.btns { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 5px; margin-top: 8px; }
+.row.btns .primary { flex: 1; }
+
+.status { color: #b4550b; font-size: 12px; min-height: 16px; margin-top: 4px; }
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #999; font-size: 11px; margin-top: 2px;
 }
-.btns button:hover { background: #eef3f8; }
-.status { color: #b4550b; font-size: 12px; min-height: 16px; margin-top: 6px; }
-.foot { color: #999; font-size: 11px; margin-top: 6px; }
+.foot a { color: #1a4f8b; font-size: 13px; text-decoration: none; cursor: pointer; }
+.foot a:hover { text-decoration: underline; }

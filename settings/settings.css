@@ -1,0 +1,23 @@
+body {
+  font: 14px/1.7 "Microsoft YaHei", system-ui, sans-serif;
+  max-width: 560px;
+  margin: 36px auto;
+  padding: 0 20px 60px;
+  color: #222;
+}
+h1 { color: #1a4f8b; font-size: 20px; }
+.card {
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 14px 18px;
+  background: #fafbfc;
+  margin-top: 12px;
+}
+.label { font-weight: 600; color: #444; margin-bottom: 6px; }
+.row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.switch span { cursor: pointer; }
+select { flex: 1; box-sizing: border-box; }
+input[type="range"] { flex: 1; }
+.hint { color: #888; font-size: 12.5px; margin: 6px 0 2px; }
+.status { color: #b4550b; min-height: 20px; margin-top: 12px; }
+.foot { color: #999; font-size: 12px; margin-top: 6px; }

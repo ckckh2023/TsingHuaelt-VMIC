@@ -1,94 +1,152 @@
+// popup = 默认页面：播放列表 + 选择文件 + 播放控制。
+// 其余设置（启用开关/模式/延时/音量/试听/循环）在独立整页 settings.html。
 const $ = (id) => document.getElementById(id);
+const send = (msg) => chrome.runtime.sendMessage(msg);
+const fmtKB = (size) => (size / 1024).toFixed(0) + ' KB';
 
-function send(msg) { return chrome.runtime.sendMessage(msg); }
-
-async function refresh() {
-  try {
-    const r = await send({ cmd: 'getState' });
-    if (!r || !r.ok) return;
-    $('enable').checked = !!r.state.enabled;
-    $('delay').value = r.state.delayMs;
-    $('delayLabel').textContent = r.state.delayMs + ' ms';
-    $('volume').value = Math.round((r.state.volume || 1) * 100);
-    $('volLabel').textContent = $('volume').value + '%';
-    $('mode').value = r.state.mode === 'manual' ? 'manual' : 'auto';
-    $('monitor').checked = r.state.monitor !== false;
-    $('loop').checked = !!r.state.loop;
-    $('delayRow').style.opacity = r.state.mode === 'auto' ? 1 : 0.4;
-
-    const a = await send({ cmd: 'audioInfo' });
-    if (a && a.ok) {
-      $('fileInfo').textContent = a.size > 0
-        ? '已载入：' + (a.size / 1024).toFixed(0) + ' KB（' + (a.mime || 'audio/mpeg') + '）'
-        : '未选择音频';
-    }
-    $('status').textContent = '';
-  } catch (e) {
-    $('status').textContent = '刷新失败：' + e;
-  }
-}
-
-async function setState(patch) {
-  const r = await send({ cmd: 'setState', patch });
-  if (!r || !r.ok) $('status').textContent = '设置失败：' + (r && r.error);
-  return r;
-}
+let list = [];         // [{id,name,size,mime}]
+let currentId = null;  // 当前文件 id
 
 function say(text, ms) {
   $('status').textContent = text;
-  if (ms) setTimeout(() => { if ($('status').textContent === text) $('status').textContent = ''; }, ms);
+  if (ms) setTimeout(() => {
+    if ($('status').textContent === text) $('status').textContent = '';
+  }, ms);
 }
 
-$('enable').addEventListener('change', () => {
-  setState({ enabled: $('enable').checked });
-  say($('enable').checked
-    ? '已启用：该站录音只能拿到插件音频（建议刷新一次页面后 100% 生效）'
-    : '已停用：页面走真实麦克风', 5000);
+function renderState(enabled) {
+  const el = $('stateLine');
+  el.classList.toggle('off', !enabled);
+  el.textContent = enabled
+    ? '● 注入已启用：本站录音将拿到插件音频'
+    : '○ 注入已停用：本站走真实麦克风（到“设置”开启）';
+}
+
+function renderList() {
+  const ul = $('list');
+  ul.textContent = '';
+  $('listMeta').textContent = list.length ? '（' + list.length + ' 项）' : '';
+  if (!list.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = '还没有音频文件，点“选择文件”添加';
+    ul.appendChild(li);
+    return;
+  }
+  for (const it of list) {
+    const li = document.createElement('li');
+    li.dataset.id = it.id;
+    if (it.id === currentId) li.className = 'cur';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    li.appendChild(dot);
+
+    if (it.id === currentId) {
+      const flag = document.createElement('span');
+      flag.className = 'flag';
+      flag.textContent = '当前';
+      li.appendChild(flag);
+    }
+
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = it.name;
+    nm.title = it.name;
+    li.appendChild(nm);
+
+    const sz = document.createElement('span');
+    sz.className = 'sz';
+    sz.textContent = fmtKB(it.size);
+    li.appendChild(sz);
+
+    const rm = document.createElement('button');
+    rm.className = 'rm';
+    rm.textContent = '✕';
+    rm.title = '删除';
+    li.appendChild(rm);
+
+    ul.appendChild(li);
+  }
+}
+
+async function selectItem(id) {
+  const r = await send({ cmd: 'selectAudio', id });
+  if (r && r.ok) {
+    list = r.list;
+    currentId = r.currentId;
+    renderList();
+    say('已切换“当前文件”', 2500);
+  } else {
+    say('切换失败：' + (r && r.error));
+  }
+}
+
+async function removeItem(id) {
+  const r = await send({ cmd: 'removeAudio', id });
+  if (r && r.ok) {
+    list = r.list;
+    currentId = r.currentId;
+    renderList();
+  } else {
+    say('删除失败：' + (r && r.error));
+  }
+}
+
+// 列表点击：行=切换当前；✕=删除（两段式确认，防误触）
+$('list').addEventListener('click', (e) => {
+  const li = e.target.closest('li');
+  if (!li || !li.dataset.id) return;
+  const rmBtn = e.target.closest('.rm');
+  if (rmBtn) {
+    if (rmBtn.dataset.arm === '1') {
+      removeItem(li.dataset.id);
+    } else {
+      rmBtn.dataset.arm = '1';
+      rmBtn.classList.add('confirm');
+      rmBtn.textContent = '确认？';
+      setTimeout(() => {
+        delete rmBtn.dataset.arm;
+        rmBtn.classList.remove('confirm');
+        rmBtn.textContent = '✕';
+      }, 2500);
+    }
+    return;
+  }
+  if (li.dataset.id !== currentId) selectItem(li.dataset.id);
 });
 
-$('btnPick').addEventListener('click', () => {
-  // 打开整页设置页选文件（弹窗里的文件选择器会因失焦被 Chrome 关闭导致上传失败）
-  chrome.runtime.openOptionsPage();
-});
-
-$('delay').addEventListener('input', () => {
-  const v = Number($('delay').value);
-  $('delayLabel').textContent = v + ' ms';
-  setState({ delayMs: v });
-});
-
-$('volume').addEventListener('input', () => {
-  const v = Number($('volume').value) / 100;
-  $('volLabel').textContent = Math.round(v * 100) + '%';
-  setState({ volume: v });
-  send({ cmd: 'transport', op: { action: 'volume', value: v } });
-});
-
-$('monitor').addEventListener('change', () => {
-  setState({ monitor: $('monitor').checked });
-  send({ cmd: 'transport', op: { action: 'monitor', value: $('monitor').checked } });
-  say($('monitor').checked ? '外放试听已开：录音时会从扬声器听到' : '外放试听已关', 4000);
-});
-
-$('loop').addEventListener('change', () => {
-  setState({ loop: $('loop').checked });
-  send({ cmd: 'transport', op: { action: 'loop', value: $('loop').checked } });
-});
-
-$('mode').addEventListener('change', () => {
-  const manual = $('mode').value === 'manual';
-  setState({ mode: manual ? 'manual' : 'auto' });
-  $('delayRow').style.opacity = manual ? 0.4 : 1;
-});
+function transport(op) { return send({ cmd: 'transport', op }); }
 
 $('btnPlay').addEventListener('click', async () => {
-  await send({ cmd: 'transport', op: { action: 'play' } });
-  say('已发送播放指令。若仍无声：请先在页面上点一下任意位置（授权播放），再点播放', 6000);
+  if (!list.length) { say('列表为空，请先“选择文件”添加音频'); return; }
+  await transport({ action: 'play' });
+  say('已发送播放指令。若仍无声：先在页面上点一下（授权播放）再点播放', 6000);
 });
-$('btnPause').addEventListener('click', () => send({ cmd: 'transport', op: { action: 'pause' } }));
+$('btnPause').addEventListener('click', () => transport({ action: 'pause' }));
 $('btnRestart').addEventListener('click', () => {
-  send({ cmd: 'transport', op: { action: 'restart' } });
+  if (!list.length) { say('列表为空，请先“选择文件”添加音频'); return; }
+  transport({ action: 'restart' });
   say('已重播', 2000);
 });
 
-refresh();
+$('btnPick').addEventListener('click', () => {
+  // 弹窗内选文件会被文件选择器抢焦点关闭，改到独立整页 picker.html
+  chrome.tabs.create({ url: chrome.runtime.getURL('picker/picker.html') });
+});
+
+$('lnkSettings').addEventListener('click', (e) => {
+  e.preventDefault();
+  chrome.runtime.openOptionsPage(); // options_ui = settings 设置页
+});
+
+(async function init() {
+  try {
+    const [s, lib] = await Promise.all([send({ cmd: 'getState' }), send({ cmd: 'getLib' })]);
+    if (s && s.ok) renderState(!!s.state.enabled);
+    if (lib && lib.ok) { list = lib.list || []; currentId = lib.currentId; }
+  } catch (e) {
+    say('加载失败：' + e);
+  }
+  renderList();
+})();

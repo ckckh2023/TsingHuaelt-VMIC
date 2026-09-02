@@ -1,0 +1,61 @@
+body {
+  font: 14px/1.7 "Microsoft YaHei", system-ui, sans-serif;
+  max-width: 640px;
+  margin: 36px auto;
+  padding: 0 20px 60px;
+  color: #222;
+}
+h1 { color: #1a4f8b; font-size: 20px; }
+.hint { color: #888; font-size: 13px; margin: 8px 0; }
+.hint b { color: #1a4f8b; }
+.card {
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 16px 20px;
+  background: #fafbfc;
+  margin-top: 12px;
+}
+.label { font-weight: 600; color: #444; margin-bottom: 8px; }
+.meta { font-weight: 400; color: #999; font-size: 12px; }
+.status { color: #b4550b; min-height: 20px; margin-top: 10px; }
+.status.ok { color: #1a7f4b; }
+
+.row { display: flex; gap: 10px; }
+.primary {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid #1a4f8b;
+  border-radius: 6px;
+  background: #1a4f8b;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.primary:hover { background: #1a5fb0; }
+.primary:active { background: #163e6e; }
+
+ul.list { list-style: none; margin: 0 0 6px; padding: 0; }
+ul.list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  margin: 3px 0;
+  border: 1px solid #e3e6ea;
+  border-radius: 6px;
+  background: #fff;
+}
+ul.list li.cur { border-color: #1a4f8b; background: #eaf2fb; }
+ul.list li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.list li .sz { color: #999; font-size: 12px; }
+ul.list li .flag {
+  flex: none; font-size: 11px; color: #1a4f8b; background: #dbe9f7;
+  border-radius: 3px; padding: 0 5px;
+}
+ul.list li.empty { justify-content: center; color: #999; background: #fff; }
+ul.list li .rm {
+  border: none; background: transparent; color: #bbb;
+  font-size: 13px; cursor: pointer; flex: none; padding: 0 2px; line-height: 1;
+}
+ul.list li .rm:hover { color: #c0392b; }
+ul.list li .rm.confirm { color: #c0392b; font-weight: 700; font-size: 12px; }
