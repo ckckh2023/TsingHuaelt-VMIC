@@ -73,8 +73,9 @@ MV3 Chromium 扩展原型（v0.4.0）：让 [清英在线](https://www.tsinghuae
 ## 安装
 
 1. 打开 `chrome://extensions`（Edge 为 `edge://extensions`），开启「开发者模式」；
-2. 从 `Release` 下载最新版本插件包，拖到浏览器插件页面导入插件即可；
-3. 访问 `https://www.tsinghuaelt.com` 并登录（评测页必须在 `*.tsinghuaelt.com` 下）。
+2. 从 `Release` 下载最新版本压缩包，解压到特定目录；
+3. 在浏览器插件页面选择加载解压缩的扩展，选择解压即可安装
+4. 访问 `https://www.tsinghuaelt.com` 并登录（评测页必须在 `*.tsinghuaelt.com` 下）。
 
 ## 使用
 
