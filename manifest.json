@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "清华社英语在线 · 虚拟麦克风 (VMIC)",
+  "version": "0.3.0",
+  "description": "让清华社英语在线的录音/口语评测只能拿到本插件注入的本地音频（输入=本地文件，处理=伪装麦克风，输出=只给插件音频）。仅限自测、演示、无障碍等合法用途。",
+  "minimum_chrome_version": "111",
+  "permissions": ["storage", "unlimitedStorage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "VMIC - 虚拟麦克风"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.tsinghuaelt.com/*"],
+      "js": ["content-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://*.tsinghuaelt.com/*"],
+      "js": ["content-bridge.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    }
+  ]
+}

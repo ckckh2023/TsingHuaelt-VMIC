@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>清华社英语在线 · VMIC</h1>
+
+  <label class="row switch">
+    <input type="checkbox" id="enable">
+    <span>启用注入（页面只能拿到插件音频）</span>
+  </label>
+
+  <div class="group">
+    <div class="label">① 本地音频（输入）</div>
+    <button id="btnPick">选择 / 更换音频文件…</button>
+    <div id="fileInfo" class="hint">未选择音频</div>
+    <div class="hint">文件在独立的整页设置页中选择（不会被关闭），选完即持久保存，刷新网页/关弹窗都不丢失。</div>
+  </div>
+
+  <div class="group">
+    <div class="label">② 播放方式（处理/对齐）</div>
+    <div class="row">
+      <select id="mode">
+        <option value="auto">自动：网站一请求录音就从头播（可按延时对齐）</option>
+        <option value="manual">手动：我点“播放”再出声</option>
+      </select>
+    </div>
+    <div class="row" id="delayRow">
+      <span>自动延时</span>
+      <input type="range" id="delay" min="0" max="3000" step="100">
+      <span id="delayLabel">800 ms</span>
+    </div>
+    <div class="hint">延时期间先录静音，到点才开始出声（外放可听到），用于对齐站内倒计时。</div>
+  </div>
+
+  <div class="group">
+    <div class="label">③ 输出控制</div>
+    <div class="row">
+      <span>音量</span>
+      <input type="range" id="volume" min="0" max="100" step="5">
+      <span id="volLabel">100%</span>
+    </div>
+    <label class="row switch"><input type="checkbox" id="monitor" checked><span>外放试听（扬声器能听到正在录的声音）</span></label>
+    <label class="row switch"><input type="checkbox" id="loop"><span>循环播放（直到停止）</span></label>
+    <div class="row btns">
+      <button id="btnPlay">播放</button>
+      <button id="btnPause">暂停</button>
+      <button id="btnRestart">重播</button>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div class="foot">仅对 *.tsinghuaelt.com 生效 · 需 Chrome/Edge ≥ 111</div>
+  <script src="popup.js"></script>
+</body>
+</html>

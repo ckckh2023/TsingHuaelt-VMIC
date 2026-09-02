@@ -1,0 +1,42 @@
+body {
+  width: 340px;
+  margin: 0;
+  padding: 12px 14px;
+  font: 13px/1.6 "Microsoft YaHei", system-ui, sans-serif;
+  color: #222;
+  background: #fafbfc;
+}
+h1 { font-size: 15px; margin: 0 0 10px; color: #1a4f8b; }
+.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.switch span { cursor: pointer; }
+.group {
+  border-top: 1px solid #e3e6ea;
+  padding: 8px 0 4px;
+  margin-top: 6px;
+}
+.label { font-weight: 600; color: #444; margin-bottom: 4px; }
+select { width: 100%; box-sizing: border-box; }
+#btnPick {
+  width: 100%;
+  padding: 7px 0;
+  border: 1px solid #1a4f8b;
+  border-radius: 6px;
+  background: #1a4f8b;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+#btnPick:hover { background: #1a5fb0; }
+input[type="range"] { flex: 1; }
+.hint { color: #888; font-size: 12px; }
+.btns button {
+  flex: 1;
+  padding: 5px 0;
+  border: 1px solid #c9cfd6;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+}
+.btns button:hover { background: #eef3f8; }
+.status { color: #b4550b; font-size: 12px; min-height: 16px; margin-top: 6px; }
+.foot { color: #999; font-size: 11px; margin-top: 6px; }
