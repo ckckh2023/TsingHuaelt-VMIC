@@ -107,8 +107,9 @@
       const h = await crypto.subtle.digest('SHA-256', buf);
       return Array.from(new Uint8Array(h)).slice(0, 8)
         .map((b) => b.toString(16).padStart(2, '0')).join('');
-    } catch (_) {
-      return null; // 极少数无 crypto.subtle 的环境, 退化为不去重(仍安全)
+    } catch (e) {
+      console.warn('[VMIC] SHA-256 不可用，退化为不去重(仍安全):', e);
+      return null;
     }
   }
 
@@ -162,13 +163,13 @@
   // ---------- 处理模块: 建图(伪麦流 + 可选试听) ----------
   function stopRec() {
     if (recSrc) {
-      try { if (recSrc.__started) recSrc.stop(); } catch (_) {}
-      try { recSrc.disconnect(); } catch (_) {}
+      try { if (recSrc.__started) recSrc.stop(); } catch (e) { console.warn('[VMIC] recSrc.stop:', e); }
+      try { recSrc.disconnect(); } catch (e) { console.warn('[VMIC] recSrc.disconnect:', e); }
       recSrc = null;
     }
-    if (recGain) { try { recGain.disconnect(); } catch (_) {} recGain = null; }
-    if (monGain) { try { monGain.disconnect(); } catch (_) {} monGain = null; }
-    if (recDest) { try { recDest.disconnect(); } catch (_) {} recDest = null; }
+    if (recGain) { try { recGain.disconnect(); } catch (e) { console.warn('[VMIC] recGain.disconnect:', e); } recGain = null; }
+    if (monGain) { try { monGain.disconnect(); } catch (e) { console.warn('[VMIC] monGain.disconnect:', e); } monGain = null; }
+    if (recDest) { try { recDest.disconnect(); } catch (e) { console.warn('[VMIC] recDest.disconnect:', e); } recDest = null; }
   }
 
   function startRecGraph() {
@@ -285,13 +286,13 @@
     navigator.getUserMedia = legacy;
     if ('webkitGetUserMedia' in navigator) navigator.webkitGetUserMedia = legacy;
     if ('mozGetUserMedia' in navigator) navigator.mozGetUserMedia = legacy;
-  } catch (_) {}
+  } catch (e) { console.warn('[VMIC] 老式 getUserMedia 包装失败:', e); }
 
   // 启用时隐藏真麦
   if (origEnum && md) {
     md.enumerateDevices = async function () {
       let devs;
-      try { devs = await origEnum(); } catch (_) { return origEnum(); }
+      try { devs = await origEnum(); } catch (e) { console.warn('[VMIC] enumerateDevices 首次失败，重试:', e); return origEnum(); }
       const out = devs.filter((d) => d.kind !== 'audioinput');
       if (state.enabled) {
         out.push({

@@ -2,7 +2,7 @@
 // 其余设置（启用开关/模式/延时/音量/试听/循环）在独立整页 settings.html。
 const $ = (id) => document.getElementById(id);
 const send = (msg) => chrome.runtime.sendMessage(msg);
-const fmtKB = (size) => (size / 1024).toFixed(0) + ' KB';
+const { fmtKB } = globalThis.VMIC;
 
 let list = [];         // [{id,name,size,mime}]
 let currentId = null;  // 当前文件 id

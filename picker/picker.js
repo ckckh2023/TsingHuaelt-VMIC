@@ -10,17 +10,12 @@
 //    标记，只在最后一个文件后推送一次给打开的评测页面。
 const $ = (id) => document.getElementById(id);
 const send = (msg) => chrome.runtime.sendMessage(msg);
-const fmtKB = (size) => (size / 1024).toFixed(0) + ' KB';
+const { uid, fmtKB } = globalThis.VMIC;
 
 const AUDIO_EXT = new Set([
   'mp3', 'wav', 'm4a', 'aac', 'oga', 'ogg', 'opus',
-  'flac', 'webm', 'wma', 'amr', 'mp4', 'mpeg'
+  'flac', 'webm', 'wma', 'amr'
 ]);
-
-function uid() {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-}
 
 function isAudioFile(f) {
   if (f.type && f.type.startsWith('audio/')) return true;

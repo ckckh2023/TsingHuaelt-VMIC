@@ -2,6 +2,7 @@
 // 所有改动即时 setState 持久到 storage.session，并广播给已打开的评测页面。
 const $ = (id) => document.getElementById(id);
 const send = (msg) => chrome.runtime.sendMessage(msg);
+const { debounce } = globalThis.VMIC;
 
 function say(text, ms) {
   $('status').textContent = text;
@@ -52,17 +53,21 @@ $('mode').addEventListener('change', () => {
   syncDelayRow();
 });
 
+const debouncedSetDelay = debounce((v) => setState({ delayMs: v }), 150);
 $('delay').addEventListener('input', () => {
   const v = Number($('delay').value);
   $('delayLabel').textContent = v + ' ms';
-  setState({ delayMs: v });
+  debouncedSetDelay(v);
 });
 
+const debouncedSetVolume = debounce((v) => {
+  setState({ volume: v });
+  send({ cmd: 'transport', op: { action: 'volume', value: v } });
+}, 150);
 $('volume').addEventListener('input', () => {
   const v = Number($('volume').value) / 100;
   $('volLabel').textContent = Math.round(v * 100) + '%';
-  setState({ volume: v });
-  send({ cmd: 'transport', op: { action: 'volume', value: v } }); // 即时调当前页面
+  debouncedSetVolume(v);
 });
 
 $('monitor').addEventListener('change', () => {
