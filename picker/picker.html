@@ -7,11 +7,6 @@
 </head>
 <body>
   <h1>VMIC · 选择本地音频</h1>
-  <p class="hint">
-    独立整页不会被文件选择器抢焦点而关闭。可<b>一次多选文件</b>，或<b>选择整个文件夹</b>
-    （自动挑出其中所有音频，含子文件夹，列表里会显示相对路径）；<br>
-    添加后进入扩展弹窗的“播放列表”并自动设为<b>当前文件</b>。建议单文件 ≤ 20MB。
-  </p>
   <div class="card">
     <div class="row">
       <button type="button" id="btnFiles" class="primary">＋ 选择文件…</button>
@@ -19,12 +14,11 @@
     </div>
     <input type="file" id="file" accept="audio/*" multiple hidden>
     <input type="file" id="folder" webkitdirectory multiple hidden>
-    <div id="status" class="status">就绪。</div>
+    <div id="status" class="status">播放列表已就绪！</div>
   </div>
   <div class="card">
-    <div class="label">当前列表 <span id="listMeta" class="meta"></span></div>
+    <div class="label">播放列表 <span id="listMeta" class="meta"></span></div>
     <ul id="list" class="list"></ul>
-    <div class="hint">点右侧 ✕ 可删除（再点一次确认）；切换“当前文件”请回到扩展弹窗操作。</div>
   </div>
   <script src="../lib/idb.js"></script>
   <script src="../lib/common.js"></script>

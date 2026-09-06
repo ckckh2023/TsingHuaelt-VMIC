@@ -1,11 +1,6 @@
-// MAIN world：本扩展的"心脏" v0.4（多文件播放列表：页面始终持有"当前文件"）
-// 引擎改为 AudioContext 方案，解决 v0.1 两个问题：
-//  1) <audio>.play() 受自动播放策略限制 + 消息触发无声  -> 改用 AudioContext，
-//     播放/监听走 WebAudio，站点手势或页面点击后必定有声
-//  2) captureStream 依赖元素加载完成，未就绪返回的流可能无音频轨，
-//     导致站点 createMediaStreamSource 报"无麦克风/权限错误"
-//     -> 改为 decodeAudioData 解码后由 MediaStreamDestination 出流，
-//        音频轨恒存在，且支持"外放试听"(录到哪一路就听到哪一路)
+// MAIN world：本扩展的"心脏"（多文件播放列表：页面始终持有"当前文件"）
+// AudioContext 方案：decodeAudioData 解码 -> MediaStreamDestination 出伪麦流，
+// 音频轨恒存在；另接 ctx.destination 做外放试听。
 //
 // 三模块:
 //  输入: bridge 转来的本地音频(ArrayBuffer) -> decodeAudioData 成 AudioBuffer
@@ -276,18 +271,6 @@
     };
   }
 
-  // 老式 navigator.getUserMedia（chivox support_h5 会引用当前属性）
-  try {
-    const legacy = (c, ok, err) => {
-      const p = (md && md.getUserMedia) ? md.getUserMedia(c)
-        : Promise.reject(new Error('getUserMedia unsupported'));
-      if (ok) p.then(ok, err || (() => {}));
-    };
-    navigator.getUserMedia = legacy;
-    if ('webkitGetUserMedia' in navigator) navigator.webkitGetUserMedia = legacy;
-    if ('mozGetUserMedia' in navigator) navigator.mozGetUserMedia = legacy;
-  } catch (e) { console.warn('[VMIC] 老式 getUserMedia 包装失败:', e); }
-
   // 启用时隐藏真麦
   if (origEnum && md) {
     md.enumerateDevices = async function () {
@@ -318,7 +301,7 @@
         break;
       }
       case 'pause':
-        if (c && c.state === 'running') c.suspend().catch(() => {});
+        stopRec();                          // 直接中断播放(非挂起), 避免 AudioContext 被页面交互 resume 后继续出声
         break;
       case 'restart':
         if (c && c.state === 'suspended') c.resume().catch(() => {});

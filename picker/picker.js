@@ -36,7 +36,7 @@ async function renderList() {
     const r = await send({ cmd: 'getLib' });
     if (!r || !r.ok) throw new Error((r && r.error) || 'getLib 失败');
     const list = r.list || [];
-    $('listMeta').textContent = list.length ? '（' + list.length + ' 项，高亮为当前）' : '';
+    $('listMeta').textContent = list.length ? '（' + list.length + ' 项，高亮项为当前选中）' : '';
     if (!list.length) {
       const li = document.createElement('li');
       li.className = 'empty';
@@ -138,7 +138,7 @@ async function addFiles(fileList, source) {
   }
 
   const parts = [];
-  if (added) parts.push('成功添加 ' + added + ' 个音频并设为当前 ✓（可关闭本页）');
+  if (added) parts.push('成功添加 ' + added + ' 个音频并设为当前音频文件');
   if (skipped) parts.push('跳过 ' + skipped + ' 个非音频文件');
   if (failed.length) parts.push('失败 ' + failed.length + ' 个：' + failed.slice(0, 3).join('、') + (failed.length > 3 ? ' 等' : ''));
   setStatus(parts.join('；') || '未添加任何文件', !failed.length && (added > 0));
