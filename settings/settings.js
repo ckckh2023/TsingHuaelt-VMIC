@@ -33,7 +33,13 @@ async function refresh() {
     $('volLabel').textContent = $('volume').value + '%';
     $('monitor').checked = r.state.monitor !== false;
     $('loop').checked = !!r.state.loop;
+    $('noiseOn').checked = r.state.noiseOn !== false;
+    $('noiseRandom').checked = r.state.noiseRandom !== false;
+    $('noiseId').value = r.state.noiseId || 'rain';
+    $('noiseVol').value = Math.round((r.state.noiseVol != null ? r.state.noiseVol : 0.1) * 100);
+    $('noiseVolLabel').textContent = $('noiseVol').value + '%';
     syncDelayRow();
+    syncNoiseRow();
   } catch (e) {
     say('读取设置失败：' + e);
   }
@@ -41,6 +47,10 @@ async function refresh() {
 
 function syncDelayRow() {
   $('delayRow').style.opacity = $('mode').value === 'auto' ? 1 : 0.4;
+}
+
+function syncNoiseRow() {
+  $('noiseId').disabled = $('noiseRandom').checked;
 }
 
 $('enable').addEventListener('change', () => {
@@ -80,6 +90,28 @@ $('loop').addEventListener('change', () => {
   const on = $('loop').checked;
   setState({ loop: on });
   send({ cmd: 'transport', op: { action: 'loop', value: on } });
+});
+
+$('noiseOn').addEventListener('change', () => {
+  setState({ noiseOn: $('noiseOn').checked },
+    $('noiseOn').checked ? '噪音覆盖已开' : '噪音覆盖已关');
+});
+$('noiseRandom').addEventListener('change', () => {
+  const on = $('noiseRandom').checked;
+  setState({ noiseRandom: on });
+  syncNoiseRow();
+});
+$('noiseId').addEventListener('change', () => {
+  setState({ noiseId: $('noiseId').value });
+});
+const debouncedSetNoiseVol = debounce((v) => {
+  setState({ noiseVol: v });
+  send({ cmd: 'transport', op: { action: 'noiseVol', value: v } });
+}, 150);
+$('noiseVol').addEventListener('input', () => {
+  const v = Number($('noiseVol').value) / 100;
+  $('noiseVolLabel').textContent = Math.round(v * 100) + '%';
+  debouncedSetNoiseVol(v);
 });
 
 refresh();

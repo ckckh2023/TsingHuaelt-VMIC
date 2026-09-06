@@ -13,7 +13,9 @@
 //  - 文件选择放在【整页 picker.html】(不会被弹窗失焦关闭), 只负责把新文件
 //    写入 file:<id>；列表登记(list/cur)统一由本 SW 维护，避免并发改列表
 
-importScripts('../lib/idb.js');
+importScripts('../lib/idb.js', '../lib/common.js');
+
+const NOISE_NAMES = VMIC.NOISE_NAMES;
 
 const DEFAULTS = {
   enabled: true,   // 是否启用注入。默认【启用】：不启用独占时本扩展完全无法发挥作用
@@ -21,7 +23,11 @@ const DEFAULTS = {
   volume: 1,       // 录音/试听音量
   monitor: true,   // 外放试听：扬声器能听到正在录的声音（作为"开始播放"提示）
   loop: false,     // 循环播放
-  mode: 'auto'     // auto=录音请求到达即自动从头播放; manual=手动点播放再出声
+  mode: 'auto',    // auto=录音请求到达即自动从头播放; manual=手动点播放再出声
+  noiseOn: true,   // 启用噪音覆盖(默认开, 防止音频完全一致被平台识别)
+  noiseRandom: true, // 启用随机噪音(每次录音随机选一个)
+  noiseId: 'rain', // 指定噪音名(随机关闭时用)
+  noiseVol: 0.1    // 噪音音量(0-1, 默认 10%)
 };
 
 // 说明：状态用 chrome.storage.session（每次浏览器会话从 DEFAULTS 起步，
@@ -106,6 +112,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           audio: rec ? bufToB64(rec.buf) : null,
           mime: rec ? rec.mime : 'audio/mpeg'
         });
+        return;
+      }
+      case 'getNoise': {           // bridge -> SW（噪音 base64, 首次 fetch 后缓存 IndexedDB）
+        const name = msg.name;
+        if (!NOISE_NAMES.includes(name)) {
+          sendResponse({ ok: false, error: 'unknown noise: ' + name });
+          return;
+        }
+        let nrec = await idbGet('noise:' + name);
+        if (!nrec || !(nrec.buf instanceof ArrayBuffer)) {
+          try {
+            const url = chrome.runtime.getURL('assets/whitevoice/' + name + '.mp3');
+            const res = await fetch(url);
+            const ab = await res.arrayBuffer();
+            nrec = { buf: ab, mime: 'audio/mpeg' };
+            await idbPut('noise:' + name, nrec);
+          } catch (e) {
+            console.warn('[VMIC] 噪音加载失败 ' + name + ':', e);
+            sendResponse({ ok: false, error: 'fetch fail' });
+            return;
+          }
+        }
+        sendResponse({ ok: true, audio: bufToB64(nrec.buf), mime: nrec.mime || 'audio/mpeg' });
         return;
       }
       case 'getLib': {             // popup/picker -> SW（播放列表元信息）

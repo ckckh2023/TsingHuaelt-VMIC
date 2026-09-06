@@ -24,6 +24,13 @@
     } catch (e) { console.warn('[VMIC] bridge pushAudio 失败:', e); }
   }
 
+  async function pushNoise(name) {
+    try {
+      const r = await chrome.runtime.sendMessage({ cmd: 'getNoise', name });
+      if (r && r.ok) postToMain({ kind: 'noise', name, audio: r.audio, mime: r.mime });
+    } catch (e) { console.warn('[VMIC] bridge pushNoise 失败:', e); }
+  }
+
   // 主世界发来 hello（首次就绪 / 首次同步竞态兜底）时，回推最新状态与音频
   window.addEventListener('message', (e) => {
     const d = e.data;
@@ -32,6 +39,7 @@
       pushState();
       pushAudio();
     }
+    if (d.kind === 'getNoise' && d.name) pushNoise(d.name);
   });
 
   // 本脚本加载后主动推一次：防止主世界先于 bridge 执行导致 hello 漏接。
