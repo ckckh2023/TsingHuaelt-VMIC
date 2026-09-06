@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "清英在线 · 虚拟麦克风 (VMIC)",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "让清英在线的录音/口语评测只能拿到本插件注入的本地音频：多文件播放列表 ，设置与选文件各自独立整页。仅限自测、演示、无障碍等合法用途。",
   "minimum_chrome_version": "111",
   "icons": {
