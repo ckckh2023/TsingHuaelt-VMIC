@@ -18,8 +18,8 @@ function renderState(enabled) {
   const el = $('stateLine');
   el.classList.toggle('off', !enabled);
   el.textContent = enabled
-    ? '● 注入已启用：本站录音将拿到插件音频'
-    : '○ 注入已停用：本站走真实麦克风（到“设置”开启）';
+    ? '● 注入已启用：本站将使用虚拟麦克风'
+    : '○ 注入已停用：本站将使用真实麦克风（插件未生效状态）';
 }
 
 function renderList() {
@@ -29,7 +29,7 @@ function renderList() {
   if (!list.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = '还没有音频文件，点“选择文件”添加';
+    li.textContent = '还没有音频文件，点下方按钮添加';
     ul.appendChild(li);
     return;
   }
@@ -119,13 +119,13 @@ $('list').addEventListener('click', (e) => {
 function transport(op) { return send({ cmd: 'transport', op }); }
 
 $('btnPlay').addEventListener('click', async () => {
-  if (!list.length) { say('列表为空，请先“选择文件”添加音频'); return; }
+  if (!list.length) { say('列表为空，请先添加音频'); return; }
   await transport({ action: 'play' });
   say('已发送播放指令。若仍无声：先在页面上点一下（授权播放）再点播放', 6000);
 });
 $('btnPause').addEventListener('click', () => transport({ action: 'pause' }));
 $('btnRestart').addEventListener('click', () => {
-  if (!list.length) { say('列表为空，请先“选择文件”添加音频'); return; }
+  if (!list.length) { say('列表为空，添加音频'); return; }
   transport({ action: 'restart' });
   say('已重播', 2000);
 });

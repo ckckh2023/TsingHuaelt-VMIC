@@ -13,7 +13,7 @@
 //  - 文件选择放在【整页 picker.html】(不会被弹窗失焦关闭), 只负责把新文件
 //    写入 file:<id>；列表登记(list/cur)统一由本 SW 维护，避免并发改列表
 
-importScripts('../lib/idb.js', '../lib/common.js');
+importScripts('../lib/idb.js');
 
 const DEFAULTS = {
   enabled: true,   // 是否启用注入。默认【启用】：不启用独占时本扩展完全无法发挥作用
@@ -43,26 +43,6 @@ async function getLib() {
   const cur = await idbGet('cur');
   return { list, currentId: cur };
 }
-
-// v0.3 -> v0.4 迁移：旧版单文件记录 {buf,mime}(key 'audio') 转成文件库首项
-(async function migrateV03() {
-  try {
-    if (await idbGet('list')) return;   // 已有新库则跳过
-    const old = await idbGet('audio');
-    if (!old || !(old.buf instanceof ArrayBuffer)) return;
-    const id = VMIC.uid();
-    const meta = {
-      id, name: '我的音频',
-      size: old.buf.byteLength,
-      mime: old.mime || 'audio/mpeg',
-      addedAt: Date.now()
-    };
-    await idbPut('file:' + id, { buf: old.buf, mime: meta.mime, name: meta.name });
-    await idbPut('list', [meta]);
-    await idbPut('cur', id);
-    await idbDel('audio');
-  } catch (e) { console.warn('[VMIC] v0.3 迁移失败（不影响新库路径）:', e); }
-})();
 
 // ArrayBuffer -> base64(跨上下文消息传递只走 JSON 安全的字符串)
 function bufToB64(buf) {
