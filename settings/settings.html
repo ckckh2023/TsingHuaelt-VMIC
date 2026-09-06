@@ -12,17 +12,17 @@
     <div class="label">注入</div>
     <label class="row switch">
       <input type="checkbox" id="enable">
-      <span>启用注入（独占：本站录音只能拿到插件音频）</span>
+      <span>启用音频独占</span>
     </label>
-    <div class="hint">默认开启；关闭后页面走真实麦克风，本扩展不生效。设置保存在当次浏览器会话内。</div>
+    <div class="hint">关闭后页面获取真实麦克风，此时扩展将不生效</div>
   </div>
 
   <div class="card">
-    <div class="label">播放对齐（处理）</div>
+    <div class="label">播放对齐</div>
     <div class="row">
       <select id="mode">
-        <option value="auto">自动：网站一请求录音就从头播（可按延时对齐）</option>
-        <option value="manual">手动：在弹窗里点“播放”再出声</option>
+        <option value="auto">自动：网站请求时，录音可及时出声</option>
+        <option value="manual">手动：在插件内点播放按钮再出声</option>
       </select>
     </div>
     <div class="row" id="delayRow">
@@ -50,8 +50,34 @@
     </label>
   </div>
 
+  <div class="card">
+    <div class="label">噪音覆盖</div>
+    <label class="row switch">
+      <input type="checkbox" id="noiseOn" checked>
+      <span>启用噪音覆盖（叠加循环噪音，防止音频完全一致被平台识别）</span>
+    </label>
+    <label class="row switch">
+      <input type="checkbox" id="noiseRandom" checked>
+      <span>启用随机噪音</span>
+    </label>
+    <div class="row">
+      <span>选择噪音</span>
+      <select id="noiseId">
+        <option value="ocean-waves">海浪</option>
+        <option value="rain">雨声</option>
+        <option value="stream">溪流</option>
+        <option value="thunder">雷声</option>
+      </select>
+    </div>
+    <div class="row">
+      <span>噪音音量</span>
+      <input type="range" id="noiseVol" min="0" max="100" step="5">
+      <span id="noiseVolLabel">10%</span>
+    </div>
+    <div class="hint">噪音仅混入录音流，不影响外放试听</div>
+  </div>
+
   <div id="status" class="status"></div>
-  <div class="foot">改动的设置即时生效，无需保存按钮。</div>
   <script src="../lib/common.js"></script>
   <script src="settings.js"></script>
 </body>

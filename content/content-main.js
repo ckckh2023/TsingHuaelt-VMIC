@@ -10,6 +10,8 @@
 (() => {
   'use strict';
   const TOKEN = 'VMIC_TSINGHUAELT_01';
+  // 内置噪音名（与 lib/common.js 的 VMIC.NOISE_NAMES 保持一致；content scripts 不引用 common.js）
+  const NOISE_NAMES = ['ocean-waves', 'rain', 'stream', 'thunder'];
 
   const state = {
     enabled: true,     // 注入开关（默认启用；停用需去设置页，页面才走真实麦克风）
@@ -18,7 +20,11 @@
     monitor: true,     // 外放试听(扬声器可听到正在录的声音)
     loop: false,       // 循环播放
     mode: 'auto',      // auto | manual
-    audioSig: ''       // 当前文件源的内容签名(用于幂等去重, 不与页面状态混淆)
+    audioSig: '',      // 当前文件源的内容签名(用于幂等去重, 不与页面状态混淆)
+    noiseOn: true,     // 启用噪音覆盖
+    noiseRandom: true, // 启用随机噪音
+    noiseId: 'rain',   // 指定噪音名(随机关闭时用)
+    noiseVol: 0.1      // 噪音音量(0-1)
   };
 
   let ctx = null;              // 共享 AudioContext(全站只建一个)
@@ -32,6 +38,13 @@
   let recDest = null;
   let recGain = null;
   let monGain = null;
+
+  // 噪音覆盖: noiseSrc -> noiseGain -> recDest(混入伪麦流, 不进扬声器)
+  let noiseSrc = null;
+  let noiseGain = null;
+  const noiseBuffers = {};          // name -> AudioBuffer
+  let noiseLoaded = false;          // 全部噪音解码完成
+  let noiseLoadRequested = false;   // 是否已发起加载(避免重复)
 
   const clampVol = (v) => Math.min(1, Math.max(0, Number(v) || 0));
 
@@ -65,13 +78,15 @@
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (!d || d.__vmic !== TOKEN || d.to !== 'main') return;
-    if (d.kind === 'state' && d.state) { applyState(d.state); everSynced = true; }
-    if (d.kind === 'audio' && d.audio !== undefined) { setAudioData(d.audio); everSynced = true; }
+    if (d.kind === 'state' && d.state) { applyState(d.state); everSynced = true; maybeLoadNoises(); }
+    if (d.kind === 'audio' && d.audio !== undefined) { setAudioData(d.audio); everSynced = true; maybeLoadNoises(); }
+    if (d.kind === 'noise' && d.name && d.audio !== undefined) setNoiseData(d.name, d.audio);
     if (d.kind === 'sync') {
       if (d.clearAudio) { clearAudio(); everSynced = true; } // 列表删空/删当前文件 -> 显式清空（区别于空推送）
       if (d.state) { applyState(d.state); everSynced = true; }
       if (d.audio !== undefined) { setAudioData(d.audio); everSynced = true; }
       if (d.transport) doTransport(d.transport);
+      maybeLoadNoises();
     }
   });
 
@@ -155,6 +170,39 @@
     }
   }
 
+  // ---------- 噪音加载 ----------
+  function maybeLoadNoises() {
+    if (noiseLoadRequested || !everSynced) return;
+    noiseLoadRequested = true;
+    for (const name of NOISE_NAMES) postToBridge({ kind: 'getNoise', name });
+  }
+
+  async function setNoiseData(name, b64) {
+    if (noiseBuffers[name]) return;
+    let buf = null;
+    if (typeof b64 === 'string' && b64) {
+      try {
+        const bin = atob(b64);
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        buf = u8.buffer;
+      } catch (e) {
+        console.warn('[VMIC] 噪音 base64 解码失败 ' + name + ':', e);
+        return;
+      }
+    }
+    if (!buf || !buf.byteLength) return;
+    try {
+      const c = ensureCtx();
+      if (!c) return;
+      const ab = await c.decodeAudioData(buf.slice(0));
+      noiseBuffers[name] = ab;
+      if (NOISE_NAMES.every((n) => noiseBuffers[n])) noiseLoaded = true;
+    } catch (e) {
+      console.warn('[VMIC] 噪音解码失败 ' + name + ':', e);
+    }
+  }
+
   // ---------- 处理模块: 建图(伪麦流 + 可选试听) ----------
   function stopRec() {
     if (recSrc) {
@@ -164,6 +212,12 @@
     }
     if (recGain) { try { recGain.disconnect(); } catch (e) { console.warn('[VMIC] recGain.disconnect:', e); } recGain = null; }
     if (monGain) { try { monGain.disconnect(); } catch (e) { console.warn('[VMIC] monGain.disconnect:', e); } monGain = null; }
+    if (noiseSrc) {
+      try { if (noiseSrc.__started) noiseSrc.stop(); } catch (e) { console.warn('[VMIC] noiseSrc.stop:', e); }
+      try { noiseSrc.disconnect(); } catch (e) { console.warn('[VMIC] noiseSrc.disconnect:', e); }
+      noiseSrc = null;
+    }
+    if (noiseGain) { try { noiseGain.disconnect(); } catch (e) { console.warn('[VMIC] noiseGain.disconnect:', e); } noiseGain = null; }
     if (recDest) { try { recDest.disconnect(); } catch (e) { console.warn('[VMIC] recDest.disconnect:', e); } recDest = null; }
   }
 
@@ -188,6 +242,24 @@
     recSrc.connect(recGain);
     recSrc.connect(monGain); // 常连, 用增益 0 关断, 避免开关瞬间爆音
 
+    // 噪音覆盖: 选一个噪音循环混入 recDest(不进扬声器试听)
+    if (state.noiseOn && noiseLoaded) {
+      const noiseName = state.noiseRandom
+        ? NOISE_NAMES[Math.floor(Math.random() * NOISE_NAMES.length)]
+        : (NOISE_NAMES.includes(state.noiseId) ? state.noiseId : NOISE_NAMES[0]);
+      const nb = noiseBuffers[noiseName];
+      if (nb) {
+        noiseGain = c.createGain();
+        noiseGain.gain.value = clampVol(state.noiseVol);
+        noiseGain.connect(recDest);
+        noiseSrc = c.createBufferSource();
+        noiseSrc.buffer = nb;
+        noiseSrc.loop = true;
+        noiseSrc.connect(noiseGain);
+        noiseSrc.__started = false;
+      }
+    }
+
     return { src: recSrc, dest: recDest };
   }
 
@@ -198,6 +270,10 @@
     try {
       recSrc.start(t);
       recSrc.__started = true;
+      if (noiseSrc && !noiseSrc.__started) {
+        try { noiseSrc.start(t); noiseSrc.__started = true; }
+        catch (e) { console.warn('[VMIC] 噪音启动失败:', e); }
+      }
       return true;
     } catch (e) {
       console.error('[VMIC] 播放启动失败:', e);
@@ -321,6 +397,10 @@
       case 'loop':
         state.loop = !!op.value;
         if (recSrc) recSrc.loop = state.loop;
+        break;
+      case 'noiseVol':
+        state.noiseVol = clampVol(op.value);
+        if (noiseGain) noiseGain.gain.value = state.noiseVol;
         break;
     }
   }
