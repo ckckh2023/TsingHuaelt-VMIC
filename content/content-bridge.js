@@ -14,14 +14,14 @@
     try {
       const r = await chrome.runtime.sendMessage({ cmd: 'getState' });
       if (r && r.ok) postToMain({ kind: 'state', state: r.state });
-    } catch (_) {}
+    } catch (e) { console.warn('[VMIC] bridge pushState 失败:', e); }
   }
 
   async function pushAudio() {
     try {
       const r = await chrome.runtime.sendMessage({ cmd: 'getAudio' });
       if (r && r.ok) postToMain({ kind: 'audio', audio: r.audio, mime: r.mime });
-    } catch (_) {}
+    } catch (e) { console.warn('[VMIC] bridge pushAudio 失败:', e); }
   }
 
   // 主世界发来 hello（首次就绪 / 首次同步竞态兜底）时，回推最新状态与音频

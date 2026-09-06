@@ -13,7 +13,7 @@
 //  - 文件选择放在【整页 picker.html】(不会被弹窗失焦关闭), 只负责把新文件
 //    写入 file:<id>；列表登记(list/cur)统一由本 SW 维护，避免并发改列表
 
-importScripts('../lib/idb.js');
+importScripts('../lib/idb.js', '../lib/common.js');
 
 const DEFAULTS = {
   enabled: true,   // 是否启用注入。默认【启用】：不启用独占时本扩展完全无法发挥作用
@@ -28,11 +28,6 @@ const DEFAULTS = {
 // 因此"默认启用"在每个新会话都成立；用户手动关闭仅当次会话内保持）。
 
 // ---------- 文件库 ----------
-function uid() {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-}
-
 // 当前选中的音频文件: { id, buf, mime, name } 或 null
 async function readCurFile() {
   const cur = await idbGet('cur');
@@ -55,7 +50,7 @@ async function getLib() {
     if (await idbGet('list')) return;   // 已有新库则跳过
     const old = await idbGet('audio');
     if (!old || !(old.buf instanceof ArrayBuffer)) return;
-    const id = uid();
+    const id = VMIC.uid();
     const meta = {
       id, name: '我的音频',
       size: old.buf.byteLength,
@@ -66,7 +61,7 @@ async function getLib() {
     await idbPut('list', [meta]);
     await idbPut('cur', id);
     await idbDel('audio');
-  } catch (_) { /* 迁移失败不影响新库路径 */ }
+  } catch (e) { console.warn('[VMIC] v0.3 迁移失败（不影响新库路径）:', e); }
 })();
 
 // ArrayBuffer -> base64(跨上下文消息传递只走 JSON 安全的字符串)
@@ -101,7 +96,7 @@ async function pushToPages(payload) {
       if (!t.id) continue;
       chrome.tabs.sendMessage(t.id, { cmd: 'pageSync', ...payload }).catch(() => {});
     }
-  } catch (_) { /* ignore */ }
+  } catch (e) { console.warn('[VMIC] pushToPages 广播失败:', e); }
 }
 
 // 把"当前文件"推给所有打开的页面（页面按内容签名去重，换文件才会重解码）
