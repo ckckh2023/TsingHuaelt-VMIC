@@ -13,6 +13,7 @@
 - **自动播放**：录音开始即从头播放（可调延时对齐倒计时）；亦支持手动模式
 - **噪音覆盖**：混入随机环境噪音，防止音频完全一致被平台识别
 - **外放试听 / 音量 / 循环**：可选扬声器监听、调节音量、循环播放
+- **网页音频捕获**：页面右下角悬浮控件，自动发现网页中的音频，可试听、一键加入插件音频库
 - 兼容 Chromium ≥ 111
 
 ## 安装
@@ -27,6 +28,13 @@
 2. 点列表行切换当前文件，✕ 删除
 3. 左下「⚙ 设置」调延时/音量/试听/模式/噪音
 4. 网页点「开始录音」→ 当前音频自动从头播放 → 录完即停
+
+### 从网页捕获音频
+
+1. 在 `*.tsinghuaelt.com` 页面播放音频，右下角 ♪ 悬浮球角标显示捕获数（可拖动）
+2. 点开悬浮球 → 列表自动收录页面 `<audio>/<video>` 元素与媒体网络请求
+3. 「▶ 试听」直接播放原始地址；「＋ 加入音频库」下载后入库并设为当前音频
+4. 播放新音频后点面板「刷新」发现更多；跨域受限的资源无法入库，列表中会标注失败原因
 
 ## 技术原理
 
@@ -74,6 +82,8 @@ manifest.json                       MV3 配置
 background/background.js            SW：文件库(IndexedDB) + 状态 + 消息路由
 content/content-main.js             主世界引擎：解码/建图/包装 API
 content/content-bridge.js           ISOLATED 世界：SW ↔ 主世界中转
+content/content-capture.js          网页音频捕获：扫描 + 悬浮控件 + 试听 + 入库
+content/content-capture-main.js     捕获模块页面侧代理：fetch/试听
 popup/ · settings/ · picker/        控制面板 / 设置 / 选文件
 lib/idb.js                          IndexedDB 读写工具
 assets/                             图标 + 内置噪音
@@ -109,6 +119,8 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(async (s) => {
 | 检测麦克风时出声 | 正常现象，正式录音会从头重播 |
 | 想用真实麦克风 | 设置页关闭「启用注入」 |
 | 装好后没效果 | 确认 ≥ Chromium 111；**刷新评测页**；Console 确认 `getUserMedia` 已被包装 |
+| 悬浮球没出现 | 重载扩展并强刷页面（Ctrl+F5）；Console 过滤 `[VMIC CAP]` 看是否注入 |
+| 捕获入库失败 | 多为跨域受限（服务器不允许扩展页面外抓取），列表项会标注；试听不受影响可先听 |
 | 评测页不在匹配域 | 改 `manifest.json` 的 `matches` 并重载 |
 
 **已知边界**：仅覆盖装了本扩展的浏览器与匹配域名；页面若读 `track.getSettings()` 或对比设备真实信息仍可能识破；网站改版后可能失效。
@@ -117,4 +129,5 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(async (s) => {
 
 - **IndexedDB**（`vmic-db` / store `kv`）：`file:<id>` 音频二进制；`list` 播放列表元信息；`cur` 当前文件 id
 - **状态**（`chrome.storage.session`）：`enabled/delayMs/volume/monitor/loop/mode/noiseOn/noiseVol`，随会话重置
-- **消息**：`getState/setState/getAudio/getLib/addFile/selectAudio/removeAudio/transport`；主世界 ↔ bridge 用 `postMessage` + 固定 token
+- **消息**：`getState/setState/getAudio/getLib/addFile/addFileB64/selectAudio/removeAudio/transport`；主世界 ↔ bridge 用 `postMessage` + 固定 token
+- **网页捕获模块**：`addFileB64`（base64 → `file:<id>`，content script 受 origin 限制不能直写 IndexedDB）；页面侧代理与捕获 UI 用独立 token `VMIC_CAPTURE_01`，与引擎零耦合
