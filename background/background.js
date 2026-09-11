@@ -61,6 +61,14 @@ function bufToB64(buf) {
   return btoa(bin);
 }
 
+// base64 -> ArrayBuffer（bufToB64 的逆运算，接收网页捕获模块传来的音频数据）
+function b64ToBuf(b64) {
+  const bin = atob(String(b64 || ''));
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8.buffer;
+}
+
 // ---------- 状态(storage.session, 纯 JSON) ----------
 async function readState() {
   const { state } = await chrome.storage.session.get('state');
@@ -162,6 +170,35 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await idbPut('cur', f.id);
         sendResponse({ ok: true, list, currentId: f.id });
         if (!msg.silent) await pushCurrentAudio(); // 批量导入(silent)只在最后一个文件后推送一次
+        return;
+      }
+      case 'addFileB64': {         // 网页捕获模块(content-capture) -> SW：base64 音频直接入库
+        // content script 无法直写扩展的 IndexedDB(origin 隔离)，故二进制以 base64
+        // 走消息通道，由本命令解码写入 file:<id> 并登记入列表（与 addFile 同一套库）
+        const f = (msg && msg.file) || {};
+        let buf = null;
+        try { buf = b64ToBuf(f.b64); } catch (_) { buf = null; }
+        if (!buf || !buf.byteLength) {
+          sendResponse({ ok: false, error: 'empty data' });
+          return;
+        }
+        const capId = VMIC.uid();
+        const capMime = f.mime || 'audio/mpeg';
+        const capName = String(f.name || 'capture-' + capId.slice(0, 8));
+        await idbPut('file:' + capId, { buf, mime: capMime, name: capName });
+        const capLib = await getLib();
+        const capMeta = {
+          id: capId,
+          name: capName,
+          size: Number(f.size) || buf.byteLength,
+          mime: capMime,
+          addedAt: Date.now()
+        };
+        const capList = [...capLib.list.filter((x) => x.id !== capId), capMeta];
+        await idbPut('list', capList);
+        await idbPut('cur', capId);
+        sendResponse({ ok: true, list: capList, currentId: capId, size: capMeta.size });
+        await pushCurrentAudio(); // 与 addFile 行为一致：新入库即设为当前并推给页面
         return;
       }
       case 'selectAudio': {        // popup 点列表行 -> 切换当前文件并推给页面
