@@ -340,7 +340,7 @@
     if (!items.size) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = '未发现音频：先播放网页中的音频，再点"刷新"';
+      li.textContent = '未发现音频：先播放网页中的音频，再点刷新';
       listEl.appendChild(li);
       return;
     }
