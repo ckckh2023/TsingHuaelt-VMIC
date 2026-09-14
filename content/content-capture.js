@@ -64,6 +64,7 @@
 
   function addItem(url, srcType) {
     if (!url || !/^(https?:|blob:|data:)/i.test(url)) return;
+    if (nameOf(url) === 'ding.mp3') return; // 忽略站点提示音 ding.mp3，不进捕获列表
     if (items.has(url)) {
       const it = items.get(url);
       if (srcType === 'dom' && it.src === 'net') it.src = 'dom'; // DOM 确证优先展示
