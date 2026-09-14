@@ -28,25 +28,25 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.tsinghuaelt.com/*"],
+      "matches": ["https://*.tsinghuaelt.com/*", "https://*.izhixue.cn/*"],
       "js": ["content/content-main.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://*.tsinghuaelt.com/*"],
+      "matches": ["https://*.tsinghuaelt.com/*", "https://*.izhixue.cn/*"],
       "js": ["content/content-bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
     },
     {
-      "matches": ["https://*.tsinghuaelt.com/*"],
+      "matches": ["https://*.tsinghuaelt.com/*", "https://*.izhixue.cn/*"],
       "js": ["content/content-capture-main.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://*.tsinghuaelt.com/*"],
+      "matches": ["https://*.tsinghuaelt.com/*", "https://*.izhixue.cn/*"],
       "js": ["content/content-capture.js"],
       "run_at": "document_idle",
       "world": "ISOLATED"
