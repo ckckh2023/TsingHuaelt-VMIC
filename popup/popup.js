@@ -26,6 +26,7 @@ function renderList() {
   const ul = $('list');
   ul.textContent = '';
   $('listMeta').textContent = list.length ? '（' + list.length + ' 项）' : '';
+  syncClearBtn();
   if (!list.length) {
     const li = document.createElement('li');
     li.className = 'empty';
@@ -93,6 +94,31 @@ async function removeItem(id) {
   }
 }
 
+// “清空”按钮：列表空则禁用并复位两段式确认状态
+function resetClearBtn() {
+  const b = $('btnClear');
+  delete b.dataset.arm;
+  b.classList.remove('confirm');
+  b.textContent = '清空';
+}
+function syncClearBtn() {
+  const b = $('btnClear');
+  b.disabled = !list.length;
+  if (!list.length) resetClearBtn();
+}
+
+async function clearAll() {
+  const r = await send({ cmd: 'clearLib' });
+  if (r && r.ok) {
+    list = r.list || [];
+    currentId = r.currentId || null;
+    renderList();
+    say('已清空全部音频', 2500);
+  } else {
+    say('清空失败：' + (r && r.error));
+  }
+}
+
 // 列表点击：行=切换当前；✕=删除（两段式确认，防误触）
 $('list').addEventListener('click', (e) => {
   const li = e.target.closest('li');
@@ -114,6 +140,22 @@ $('list').addEventListener('click', (e) => {
     return;
   }
   if (li.dataset.id !== currentId) selectItem(li.dataset.id);
+});
+
+// 清空全部（两段式确认，与单删一致）
+$('btnClear').addEventListener('click', () => {
+  const b = $('btnClear');
+  if (!list.length) return;
+  if (b.dataset.arm === '1') {
+    clearAll();
+  } else {
+    b.dataset.arm = '1';
+    b.classList.add('confirm');
+    b.textContent = '确认？';
+    setTimeout(() => {
+      if (b.dataset.arm === '1') resetClearBtn();
+    }, 2500);
+  }
 });
 
 function transport(op) { return send({ cmd: 'transport', op }); }
