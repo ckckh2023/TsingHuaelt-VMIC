@@ -37,6 +37,7 @@ async function renderList() {
     if (!r || !r.ok) throw new Error((r && r.error) || 'getLib 失败');
     const list = r.list || [];
     $('listMeta').textContent = list.length ? '（' + list.length + ' 项，高亮项为当前选中）' : '';
+    syncClearBtn(list.length);
     if (!list.length) {
       const li = document.createElement('li');
       li.className = 'empty';
@@ -71,12 +72,49 @@ async function renderList() {
       ul.appendChild(li);
     }
   } catch (e) {
+    syncClearBtn(0);
     const li = document.createElement('li');
     li.className = 'empty';
     li.textContent = '读取列表失败：' + e;
     ul.appendChild(li);
   }
 }
+
+// “清空”按钮：列表空则禁用并复位两段式确认状态
+function resetClearBtn() {
+  const b = $('btnClear');
+  delete b.dataset.arm;
+  b.classList.remove('confirm');
+  b.textContent = '清空';
+}
+function syncClearBtn(has) {
+  const b = $('btnClear');
+  b.disabled = !has;
+  if (!has) resetClearBtn();
+}
+
+// 清空全部音频（两段式确认，与单删一致）
+async function clearAll() {
+  const r = await send({ cmd: 'clearLib' });
+  if (r && r.ok) setStatus('已清空全部音频', true);
+  else setStatus('清空失败：' + (r && r.error), false);
+  await renderList();
+}
+
+$('btnClear').addEventListener('click', () => {
+  const b = $('btnClear');
+  if (b.disabled) return;
+  if (b.dataset.arm === '1') {
+    clearAll();
+  } else {
+    b.dataset.arm = '1';
+    b.classList.add('confirm');
+    b.textContent = '确认？';
+    setTimeout(() => {
+      if (b.dataset.arm === '1') resetClearBtn();
+    }, 2500);
+  }
+});
 
 // source: 'files'（多选文件）| 'folder'（整个文件夹，过滤非音频）
 async function addFiles(fileList, source) {

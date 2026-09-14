@@ -231,6 +231,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         return;
       }
+      case 'clearLib': {          // popup 清空全部音频（删除所有 file:<id> + 列表 + 当前指针）
+        const lib = await getLib();
+        for (const it of lib.list) await idbDel('file:' + it.id);
+        await idbPut('list', []);
+        await idbDel('cur');
+        sendResponse({ ok: true, list: [], currentId: null });
+        await pushClearAudio();   // 页面同步清空, 回静音兜底
+        return;
+      }
       case 'setState': {           // settings/popup -> SW
         const next = await writeState(msg.patch || {});
         sendResponse({ ok: true, state: next });

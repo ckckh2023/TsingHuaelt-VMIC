@@ -19,6 +19,17 @@ h1 { font-size: 15px; margin: 0 0 6px; color: #1a4f8b; }
   margin-top: 6px;
 }
 .label { font-weight: 600; color: #444; margin-bottom: 4px; }
+.label.listhead { display: flex; align-items: center; }
+.label .clear {
+  margin-left: auto;
+  border: none; background: transparent; color: #bbb;
+  font-size: 12px; cursor: pointer; padding: 0 2px; line-height: 1;
+  font-weight: 400;
+}
+.label .clear:hover { color: #c0392b; }
+.label .clear.confirm { color: #c0392b; font-weight: 700; }
+.label .clear:disabled { color: #ddd; cursor: default; }
+.label .clear:disabled:hover { color: #ddd; }
 
 ul.list {
   list-style: none;

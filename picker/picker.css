@@ -16,6 +16,17 @@ h1 { color: #1a4f8b; font-size: 20px; }
   margin-top: 12px;
 }
 .label { font-weight: 600; color: #444; margin-bottom: 8px; }
+.label.listhead { display: flex; align-items: center; }
+.label .clear {
+  margin-left: auto;
+  border: none; background: transparent; color: #bbb;
+  font-size: 12px; cursor: pointer; padding: 0 2px; line-height: 1;
+  font-weight: 400;
+}
+.label .clear:hover { color: #c0392b; }
+.label .clear.confirm { color: #c0392b; font-weight: 700; }
+.label .clear:disabled { color: #ddd; cursor: default; }
+.label .clear:disabled:hover { color: #ddd; }
 .meta { font-weight: 400; color: #999; font-size: 12px; }
 .status { color: #b4550b; min-height: 20px; margin-top: 10px; }
 .status.ok { color: #1a7f4b; }
