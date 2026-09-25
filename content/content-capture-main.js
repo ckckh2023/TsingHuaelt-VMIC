@@ -44,7 +44,7 @@
     }
 
     if (d.kind === 'preview') {
-      try { if (playEl) { playEl.pause(); playEl.removeAttribute('src'); } } catch (_) {}
+      try { if (playEl) { playEl.pause(); playEl.src = ''; } } catch (_) {}
       playEl = null;
       if (d.url) {
         playEl = new Audio(d.url);
