@@ -119,7 +119,7 @@
     state.audioSig = '';
   }
 
-  // ---------- 输入模块: 解码本地音频 ----------
+  // ---------- 输入模块 ----------
   async function hashBuf(buf) {
     try {
       const h = await crypto.subtle.digest('SHA-256', buf);
@@ -154,7 +154,7 @@
       return;
     }
     const sig = await hashBuf(buf);
-    if (audioRaw && sig && sig === state.audioSig) return; // 同一文件源, 不动
+    if (audioRaw && sig && sig === state.audioSig) return;
     state.audioSig = sig || '';
 
     audioRaw = buf;
@@ -430,6 +430,7 @@
           const v = await origGUM({ video: constraints.video }).catch(() => null);
           if (v) return new MediaStream([...v.getVideoTracks(), stream.getAudioTracks()[0]]);
           dbg('getUserMedia video fail -> fallback real');
+          stopRec();
           return origGUM(constraints);
         }
         dbg('getUserMedia return stream');
@@ -437,6 +438,7 @@
       } catch (e) {
         console.error('[VMIC] 伪流创建失败, 回退真实设备:', e);
         dbg('getUserMedia fallback to real', { msg: e.message });
+        stopRec();
         return origGUM(constraints);
       }
     };
