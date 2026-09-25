@@ -1,5 +1,4 @@
-// 独立整页设置页（manifest options_ui）：启用开关、模式/延时、音量/试听/循环。
-// 所有改动即时 setState 持久到 storage.session，并广播给已打开的评测页面。
+// 独立整页设置页
 const $ = (id) => document.getElementById(id);
 const send = (msg) => chrome.runtime.sendMessage(msg);
 const { debounce } = globalThis.VMIC;
@@ -55,7 +54,7 @@ function syncNoiseRow() {
 
 $('enable').addEventListener('change', () => {
   setState({ enabled: $('enable').checked },
-    $('enable').checked ? '已启用：该站录音只能拿到插件音频' : '已停用：页面走真实麦克风');
+    $('enable').checked ? '已启用' : '已停用');
 });
 
 $('mode').addEventListener('change', () => {
@@ -82,7 +81,7 @@ $('volume').addEventListener('input', () => {
 
 $('monitor').addEventListener('change', () => {
   const on = $('monitor').checked;
-  setState({ monitor: on }, on ? '外放试听已开：录音时会从扬声器听到' : '外放试听已关');
+  setState({ monitor: on }, on ? '外放试听已开' : '外放试听已关');
   send({ cmd: 'transport', op: { action: 'monitor', value: on } });
 });
 

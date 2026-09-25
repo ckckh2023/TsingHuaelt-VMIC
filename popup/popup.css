@@ -75,7 +75,7 @@ ul.list li .rm:hover { color: #c0392b; }
 ul.list li .rm.confirm { color: #c0392b; font-weight: 700; font-size: 12px; }
 ul.list li.empty { cursor: default; color: #999; justify-content: center; }
 
-/* 主按钮（选择文件 / 播放 / 暂停 / 重播 统一效果） */
+/* 主按钮 */
 .primary {
   width: 100%;
   padding: 7px 0;

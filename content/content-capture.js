@@ -1,18 +1,9 @@
-// ISOLATED world：网页音频捕获模块（独立模块：悬浮控件 + 捕获列表 + 试听 + 入库）
-// 职责：
-//  扫描: DOM 中的 <audio>/<video>/<source> + Performance 资源时间线里的媒体请求，
-//        去重后进入捕获列表（MutationObserver + 定时轮询持续发现新音频）
-//  UI:   右下角悬浮球（可拖动，角标显示捕获数）-> 点开 Shadow DOM 面板
-//  试听: 经页面侧代理(content-capture-main.js)播放原始 URL，直连扬声器
-//  入库: fetch 音频数据 -> base64 -> SW 的 addFileB64 命令写入音频库
-//        （复用 file:<id> + list/cur 数据模型，与本地选文件(picker)同一套库）
-// 模块边界：与 content-main / content-bridge 无任何消息往来；与页面侧代理用
-// 独立 token；对其他模块的互动仅限"输入"——通过 SW 入库命令写入音频库。
+// 网页音频捕获模块
 (() => {
   'use strict';
-  const CAP_TOKEN = 'VMIC_CAPTURE_01'; // 与 content-capture-main.js 约定一致
+  const CAP_TOKEN = 'VMIC_CAPTURE_01';
 
-  // ---------- 小工具（content scripts 不引用 lib/，与现有约定一致） ----------
+  // ---------- 小工具 ----------
   const uid = () => (crypto.randomUUID
     ? crypto.randomUUID()
     : 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
@@ -57,17 +48,16 @@
     return h;
   }
 
-  // ---------- 捕获列表（url 去重） ----------
-  // item: { url, name, src: 'dom'|'net', size, mime, status: idle|busy|added|failed, err }
-  const items = new Map(); // url -> item
-  let playingUrl = null;   // 当前试听中的 url
+  // ---------- 捕获列表 ----------
+  const items = new Map();
+  let playingUrl = null;
 
   function addItem(url, srcType) {
     if (!url || !/^(https?:|blob:|data:)/i.test(url)) return;
-    if (nameOf(url) === 'ding.mp3') return; // 忽略站点提示音 ding.mp3，不进捕获列表
+    if (nameOf(url) === 'ding.mp3') return; // 忽略站点提示音 ding.mp3
     if (items.has(url)) {
       const it = items.get(url);
-      if (srcType === 'dom' && it.src === 'net') it.src = 'dom'; // DOM 确证优先展示
+      if (srcType === 'dom' && it.src === 'net') it.src = 'dom';
       return;
     }
     items.set(url, {
@@ -98,9 +88,9 @@
 
   function scanAll() { scanDom(); scanPerf(); updateBadge(); }
 
-  // ---------- 与页面侧代理(content-capture-main.js)通信 ----------
+  // ---------- 与页面侧代理通信 ----------
   let reqSeq = 0;
-  const pendingFetch = new Map(); // reqId -> resolve
+  const pendingFetch = new Map();
 
   window.addEventListener('message', (e) => {
     const d = e.data;
@@ -112,7 +102,6 @@
     }
   });
 
-  // 页面上下文代理 fetch（ISOLATED 直连失败时的回退，覆盖 blob: 等场景）
   function proxyFetch(url) {
     const reqId = ++reqSeq;
     return new Promise((resolve) => {
@@ -146,7 +135,7 @@
     if (panelOpen) renderList();
   }
 
-  // ---------- 入库（对其他模块的唯一互动点：SW addFileB64） ----------
+  // ---------- 入库 ----------
   function abToB64(buf) {
     const u8 = new Uint8Array(buf);
     let bin = '';
@@ -180,7 +169,7 @@
     renderList();
   }
 
-  // ---------- 悬浮 UI（Shadow DOM 隔离样式） ----------
+  // ---------- 悬浮 UI ----------
   const SRC_LABEL = { dom: '页面元素', net: '网络资源' };
   let host = null;       // <vmic-capture> 固定定位宿主
   let ball = null;       // 悬浮球
@@ -270,8 +259,7 @@
     ball.appendChild(badge);
     root.appendChild(ball);
 
-    // 悬浮球：拖动 + 点击展开（位移超阈值视为拖动）
-    // 拖动移动 host(fixed 定位)本体；panel 相对 host 绝对定位，自动跟随
+    // 悬浮球
     let drag = null;
     ball.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -306,15 +294,12 @@
       if (!btn) return;
       const it = items.get(btn.dataset.url);
       if (!it) return;
-      if (btn.dataset.act === 'play') {
-        preview(playingUrl === it.url ? null : it.url); // 再点一次即停止
-      } else if (btn.dataset.act === 'add' && it.status !== 'busy' && it.status !== 'added') {
-        addToLib(it);
-      }
+      if (btn.dataset.act === 'play') preview(playingUrl === it.url ? null : it.url);
+      else if (btn.dataset.act === 'add' && it.status !== 'busy' && it.status !== 'added') addToLib(it);
     });
 
     document.documentElement.appendChild(host);
-    console.log('[VMIC CAP] 网页音频捕获控件已注入（右下角悬浮球）');
+    console.log('[VMIC CAP] 网页音频捕获控件已注入');
     updateBadge();
   }
 
@@ -331,7 +316,7 @@
     panelOpen = !panelOpen;
     panel.classList.toggle('open', panelOpen);
     if (panelOpen) { scanAll(); renderList(); }
-    else if (playingUrl) preview(null); // 收起面板即停试听
+    else if (playingUrl) preview(null);
   }
 
   function renderList() {

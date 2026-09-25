@@ -1,13 +1,4 @@
-// 独立整页"选文件页"：把本地音频文件写进扩展自己的 IndexedDB。
-// 支持两种来源：
-//  1) "选择文件…"：多选文件；
-//  2) "选择文件夹…"：整个文件夹（含子文件夹），只挑其中的音频文件。
-// 设计：
-//  - 整页不会被弹窗失焦关闭，读大文件不被打断；
-//  - 二进制不进消息通道（避免 JSON 序列化把 File/Blob/ArrayBuffer 变成 {}），
-//    本页直接结构化克隆到 file:<id>（读写工具 lib/idb.js）；
-//  - 列表登记(list/cur)统一交给 SW 的 addFile 命令维护；批量导入用 silent
-//    标记，只在最后一个文件后推送一次给打开的评测页面。
+// 选文件页
 const $ = (id) => document.getElementById(id);
 const send = (msg) => chrome.runtime.sendMessage(msg);
 const { uid, fmtKB } = globalThis.VMIC;
@@ -80,7 +71,7 @@ async function renderList() {
   }
 }
 
-// “清空”按钮：列表空则禁用并复位两段式确认状态
+// 清空按钮
 function resetClearBtn() {
   const b = $('btnClear');
   delete b.dataset.arm;
@@ -93,7 +84,7 @@ function syncClearBtn(has) {
   if (!has) resetClearBtn();
 }
 
-// 清空全部音频（两段式确认，与单删一致）
+// 清空全部音频
 async function clearAll() {
   const r = await send({ cmd: 'clearLib' });
   if (r && r.ok) setStatus('已清空全部音频', true);
@@ -116,7 +107,6 @@ $('btnClear').addEventListener('click', () => {
   }
 });
 
-// source: 'files'（多选文件）| 'folder'（整个文件夹，过滤非音频）
 async function addFiles(fileList, source) {
   const input = source === 'folder' ? $('folder') : $('file');
   let pool = Array.from(fileList || []);
@@ -132,7 +122,7 @@ async function addFiles(fileList, source) {
   if (!pool.length) {
     input.value = '';
     setStatus(source === 'folder'
-      ? '该文件夹里没有找到可用音频（mp3/wav/m4a/aac/ogg/opus/flac/webm 等）'
+      ? '该文件夹里没有找到可用音频'
       : '没有可添加的文件', false);
     renderList();
     return;
@@ -159,7 +149,8 @@ async function addFiles(fileList, source) {
       if (r && r.ok) {
         added++;
         lastOkId = id;
-      } else {
+      }
+      else {
         failed.push(disp + '(登记失败)');
         await idbDel('file:' + id).catch(() => {});
       }
@@ -167,13 +158,9 @@ async function addFiles(fileList, source) {
       failed.push(disp);
     }
   }
-  input.value = ''; // 允许再次选择同名文件/同一文件夹
+  input.value = '';
 
-  // 兜底：全部成功时最后一条已 silent:false 推送过；
-  // 若部分失败导致"最后一个文件"没推送成功，把当前(cur=最后成功项)补推一次
-  if (failed.length && lastOkId) {
-    await send({ cmd: 'selectAudio', id: lastOkId }).catch(() => {});
-  }
+  if (failed.length && lastOkId) await send({ cmd: 'selectAudio', id: lastOkId }).catch(() => {});
 
   const parts = [];
   if (added) parts.push('成功添加 ' + added + ' 个音频并设为当前音频文件');
@@ -186,11 +173,8 @@ async function addFiles(fileList, source) {
 // 列表删除（与主页一致：✕ 二次确认，删除当前文件自动切到第一项）
 async function removeItem(id) {
   const r = await send({ cmd: 'removeAudio', id });
-  if (r && r.ok) {
-    setStatus('已删除' + (r.currentId ? '' : '，列表已清空'), true);
-  } else {
-    setStatus('删除失败：' + (r && r.error), false);
-  }
+  if (r && r.ok) setStatus('已删除' + (r.currentId ? '' : '，列表已清空'), true);
+  else setStatus('删除失败：' + (r && r.error), false);
   await renderList();
 }
 
