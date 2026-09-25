@@ -1,40 +1,25 @@
-// Service Worker：音频文件库与状态的"仓库"+ 消息路由
-// 数据模型（IndexedDB store 'kv'，读写工具见 lib/idb.js）:
-//   file:<id> -> { buf: ArrayBuffer, mime, name }   每个音频文件本体（二进制）
-//   list      -> [{ id, name, size, mime, addedAt }] 播放列表元信息（数组顺序=显示顺序）
-//   cur       -> 当前选中的音频 id（页面注入/播放只针对"当前文件"）
-// 关键约束（本扩展踩过的坑）:
-//  1) chrome.storage 是 JSON 序列化, 存不了 ArrayBuffer(会变成 {})
-//  2) chrome.runtime 消息传递默认也是 JSON 序列化, File/Blob/ArrayBuffer
-//     都可能被破坏(File/Blob -> {})
-// 因此:
-//  - 二进制音频只进【IndexedDB】(结构化克隆, 无 JSON 问题)
-//  - 跨上下文传递一律用【base64 字符串】(JSON 安全), 由接收方解码
-//  - 文件选择放在【整页 picker.html】(不会被弹窗失焦关闭), 只负责把新文件
-//    写入 file:<id>；列表登记(list/cur)统一由本 SW 维护，避免并发改列表
+// 音频文件库与状态的列表
 
 importScripts('../lib/idb.js', '../lib/common.js');
 
 const NOISE_NAMES = VMIC.NOISE_NAMES;
 
 const DEFAULTS = {
-  enabled: true,   // 是否启用注入。默认【启用】：不启用独占时本扩展完全无法发挥作用
-  delayMs: 800,    // 自动模式下：创建伪流后延时多少毫秒再出声（对齐站内倒计时）
-  volume: 1,       // 录音/试听音量
-  monitor: true,   // 外放试听：扬声器能听到正在录的声音（作为"开始播放"提示）
-  loop: false,     // 循环播放
-  mode: 'auto',    // auto=录音请求到达即自动从头播放; manual=手动点播放再出声
-  noiseOn: true,   // 启用噪音覆盖(默认开, 防止音频完全一致被平台识别)
-  noiseRandom: true, // 启用随机噪音(每次录音随机选一个)
-  noiseId: 'rain', // 指定噪音名(随机关闭时用)
-  noiseVol: 0.1    // 噪音音量(0-1, 默认 10%)
+  enabled: true,     // 注入开关
+  delayMs: 800,      // 延时时间
+  volume: 1,         // 录音音量
+  monitor: true,     // 外放试听
+  loop: false,       // 循环播放
+  mode: 'auto',      // 自动模式
+  audioSig: '',      // 当前文件源的内容签名
+  noiseOn: true,     // 启用噪音覆盖
+  noiseRandom: true, // 启用随机噪音
+  noiseId: 'rain',   // 指定噪音名
+  noiseVol: 0.1      // 噪音音量
 };
 
-// 说明：状态用 chrome.storage.session（每次浏览器会话从 DEFAULTS 起步，
-// 因此"默认启用"在每个新会话都成立；用户手动关闭仅当次会话内保持）。
 
 // ---------- 文件库 ----------
-// 当前选中的音频文件: { id, buf, mime, name } 或 null
 async function readCurFile() {
   const cur = await idbGet('cur');
   if (!cur) return null;
@@ -50,7 +35,6 @@ async function getLib() {
   return { list, currentId: cur };
 }
 
-// ArrayBuffer -> base64(跨上下文消息传递只走 JSON 安全的字符串)
 function bufToB64(buf) {
   const u8 = new Uint8Array(buf);
   let bin = '';
@@ -61,7 +45,6 @@ function bufToB64(buf) {
   return btoa(bin);
 }
 
-// base64 -> ArrayBuffer（bufToB64 的逆运算，接收网页捕获模块传来的音频数据）
 function b64ToBuf(b64) {
   const bin = atob(String(b64 || ''));
   const u8 = new Uint8Array(bin.length);
@@ -69,7 +52,7 @@ function b64ToBuf(b64) {
   return u8.buffer;
 }
 
-// ---------- 状态(storage.session, 纯 JSON) ----------
+// ---------- 状态 ----------
 async function readState() {
   const { state } = await chrome.storage.session.get('state');
   return { ...DEFAULTS, ...(state || {}) };
@@ -81,8 +64,6 @@ async function writeState(patch) {
   return next;
 }
 
-// 把变更同步到所有已打开标签页里的 bridge（无 tabs 权限时无法按 URL 过滤，
-// 就广播给全部标签页，非目标页会静默失败）
 async function pushToPages(payload) {
   try {
     const tabs = await chrome.tabs.query({});
@@ -93,7 +74,6 @@ async function pushToPages(payload) {
   } catch (e) { console.warn('[VMIC] pushToPages 广播失败:', e); }
 }
 
-// 把"当前文件"推给所有打开的页面（页面按内容签名去重，换文件才会重解码）
 async function pushCurrentAudio() {
   const rec = await readCurFile();
   await pushToPages(rec
@@ -101,19 +81,19 @@ async function pushCurrentAudio() {
     : { clearAudio: true });
 }
 
-// 显式清空页面里的音频（区别于"空推送"，避免误清现有文件源）
 async function pushClearAudio() {
   await pushToPages({ clearAudio: true });
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
+    try {
     switch (msg && msg.cmd) {
-      case 'getState': {           // bridge/settings/popup -> SW
+      case 'getState': {
         sendResponse({ ok: true, state: await readState() });
         return;
       }
-      case 'getAudio': {           // bridge -> SW（当前文件 base64, JSON 安全）
+      case 'getAudio': {
         const rec = await readCurFile();
         sendResponse({
           ok: true,
@@ -122,7 +102,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         });
         return;
       }
-      case 'getNoise': {           // bridge -> SW（噪音 base64, 首次 fetch 后缓存 IndexedDB）
+      case 'getNoise': {
         const name = msg.name;
         if (!NOISE_NAMES.includes(name)) {
           sendResponse({ ok: false, error: 'unknown noise: ' + name });
@@ -145,12 +125,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({ ok: true, audio: bufToB64(nrec.buf), mime: nrec.mime || 'audio/mpeg' });
         return;
       }
-      case 'getLib': {             // popup/picker -> SW（播放列表元信息）
+      case 'getLib': {
         const lib = await getLib();
         sendResponse({ ok: true, list: lib.list, currentId: lib.currentId });
         return;
       }
-      case 'addFile': {            // picker 已把二进制写入 file:<id> -> 登记入列表并设为当前
+      case 'addFile': {
         const f = (msg && msg.file) || {};
         const rec = await idbGet('file:' + f.id);
         if (!f.id || !(rec && rec.buf instanceof ArrayBuffer)) {
@@ -169,12 +149,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await idbPut('list', list);
         await idbPut('cur', f.id);
         sendResponse({ ok: true, list, currentId: f.id });
-        if (!msg.silent) await pushCurrentAudio(); // 批量导入(silent)只在最后一个文件后推送一次
+        if (!msg.silent) await pushCurrentAudio();
         return;
       }
-      case 'addFileB64': {         // 网页捕获模块(content-capture) -> SW：base64 音频直接入库
-        // content script 无法直写扩展的 IndexedDB(origin 隔离)，故二进制以 base64
-        // 走消息通道，由本命令解码写入 file:<id> 并登记入列表（与 addFile 同一套库）
+      case 'addFileB64': {
         const f = (msg && msg.file) || {};
         let buf = null;
         try { buf = b64ToBuf(f.b64); } catch (_) { buf = null; }
@@ -198,10 +176,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await idbPut('list', capList);
         await idbPut('cur', capId);
         sendResponse({ ok: true, list: capList, currentId: capId, size: capMeta.size });
-        await pushCurrentAudio(); // 与 addFile 行为一致：新入库即设为当前并推给页面
+        await pushCurrentAudio();
         return;
       }
-      case 'selectAudio': {        // popup 点列表行 -> 切换当前文件并推给页面
+      case 'selectAudio': {
         const lib = await getLib();
         if (!msg.id || !lib.list.some((x) => x.id === msg.id)) {
           sendResponse({ ok: false, error: 'not found: ' + msg.id });
@@ -212,7 +190,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await pushCurrentAudio();
         return;
       }
-      case 'removeAudio': {        // popup 删除列表项
+      case 'removeAudio': {
         const lib = await getLib();
         if (!msg.id || !lib.list.some((x) => x.id === msg.id)) {
           sendResponse({ ok: false, error: 'not found: ' + msg.id });
@@ -226,27 +204,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (cur) await idbPut('cur', cur); else await idbDel('cur');
         sendResponse({ ok: true, list, currentId: cur });
         if (wasCur) {
-          if (cur) await pushCurrentAudio(); // 自动切到列表第一项
-          else await pushClearAudio();       // 删到空 -> 页面清空, 回静音兜底
+          if (cur) await pushCurrentAudio();
+          else await pushClearAudio();
         }
         return;
       }
-      case 'clearLib': {          // popup 清空全部音频（删除所有 file:<id> + 列表 + 当前指针）
+      case 'clearLib': {
         const lib = await getLib();
         for (const it of lib.list) await idbDel('file:' + it.id);
         await idbPut('list', []);
         await idbDel('cur');
         sendResponse({ ok: true, list: [], currentId: null });
-        await pushClearAudio();   // 页面同步清空, 回静音兜底
+        await pushClearAudio();
         return;
       }
-      case 'setState': {           // settings/popup -> SW
+      case 'setState': {
         const next = await writeState(msg.patch || {});
         sendResponse({ ok: true, state: next });
         await pushToPages({ state: next });
         return;
       }
-      case 'transport': {          // popup -> SW -> 页面
+      case 'transport': {
         sendResponse({ ok: true });
         await pushToPages({ transport: msg.op });
         return;
@@ -254,6 +232,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       default:
         sendResponse({ ok: false, error: 'unknown cmd: ' + (msg && msg.cmd) });
     }
+    } catch (e) {
+      console.warn('[VMIC] 处理消息异常:', e);
+      try { sendResponse({ ok: false, error: String((e && e.message) || e) }); } catch (_) {}
+    }
   })();
-  return true; // 异步 sendResponse
+  return true;
 });

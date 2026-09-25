@@ -1,51 +1,42 @@
-// MAIN world：本扩展的"心脏"（多文件播放列表：页面始终持有"当前文件"）
-// AudioContext 方案：decodeAudioData 解码 -> MediaStreamDestination 出伪麦流，
-// 音频轨恒存在；另接 ctx.destination 做外放试听。
-//
-// 三模块:
-//  输入: bridge 转来的本地音频(ArrayBuffer) -> decodeAudioData 成 AudioBuffer
-//  处理: BufferSource -> recGain(音量) -> MediaStreamDestination(伪装麦克风)
-//        BufferSource -> monGain(试听) -> ctx.destination(扬声器, 可开关)
-//  输出: 包装 getUserMedia/enumerateDevices，启用时纯音频请求只能拿到伪流
+// 多文件播放列表
 (() => {
   'use strict';
   const TOKEN = 'VMIC_TSINGHUAELT_01';
-  // 内置噪音名（与 lib/common.js 的 VMIC.NOISE_NAMES 保持一致；content scripts 不引用 common.js）
+  // 内置噪音名
   const NOISE_NAMES = ['ocean-waves', 'rain', 'stream', 'thunder'];
 
   const state = {
-    enabled: true,     // 注入开关（默认启用；停用需去设置页，页面才走真实麦克风）
-    delayMs: 800,      // 自动模式: 伪流创建后多少 ms 再出声(对齐倒计时)
-    volume: 1,         // 录音/试听共用音量
-    monitor: true,     // 外放试听(扬声器可听到正在录的声音)
+    enabled: true,     // 注入开关
+    delayMs: 800,      // 延时时间
+    volume: 1,         // 录音音量
+    monitor: true,     // 外放试听
     loop: false,       // 循环播放
-    mode: 'auto',      // auto | manual
-    audioSig: '',      // 当前文件源的内容签名(用于幂等去重, 不与页面状态混淆)
+    mode: 'auto',      // 自动模式
+    audioSig: '',      // 当前文件源的内容签名
     noiseOn: true,     // 启用噪音覆盖
     noiseRandom: true, // 启用随机噪音
-    noiseId: 'rain',   // 指定噪音名(随机关闭时用)
-    noiseVol: 0.1      // 噪音音量(0-1)
+    noiseId: 'rain',   // 指定噪音名
+    noiseVol: 0.1      // 噪音音量
   };
 
-  let ctx = null;              // 共享 AudioContext(全站只建一个)
+  let ctx = null;              // 共享 AudioContext
   let audioRaw = null;         // 原始 ArrayBuffer
   let audioBuffer = null;      // 解码后的 AudioBuffer
-  let decodeDone = true;       // 当前 audioRaw 是否已解码完成(成功/失败都置 true)
-  let everSynced = false;      // 是否已收到过 bridge 的首次同步(之后不再主动拉文件)
+  let decodeDone = true;       // 当前 audioRaw 是否已解码完成
+  let everSynced = false;      // 是否已收到过 bridge 的首次同步
 
-  // 当前"录音会话"图: src -> recGain -> dest(伪麦流) ; src -> monGain -> speakers
   let recSrc = null;
   let recDest = null;
   let recGain = null;
   let monGain = null;
-  let recDestTrackId = null;   // 伪流 audio track 的 id, 用于识别网页是否在消费我们的流
+  let recDestTrackId = null;   // 伪流 audio track 的 id
 
-  // 噪音覆盖: noiseSrc -> noiseGain -> recDest(混入伪麦流, 不进扬声器)
+  // 噪音覆盖
   let noiseSrc = null;
   let noiseGain = null;
-  const noiseBuffers = {};          // name -> AudioBuffer
-  let noiseLoaded = false;          // 全部噪音解码完成
-  let noiseLoadRequested = false;   // 是否已发起加载(避免重复)
+  const noiseBuffers = {};
+  let noiseLoaded = false;
+  let noiseLoadRequested = false;
 
   const clampVol = (v) => Math.min(1, Math.max(0, Number(v) || 0));
 
@@ -86,14 +77,13 @@
     return ctx;
   }
 
-  // 页面上任意点击/按键都可能来自站点录音按钮 -> 趁机恢复 ctx(自动播放策略规避)
   function hookGestures() {
     const resume = () => { if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); };
     document.addEventListener('pointerdown', resume, true);
     document.addEventListener('keydown', resume, true);
   }
 
-  // ---------- 与 isolated 世界(bridge)通信 ----------
+  // ---------- 与 isolated 世界通信 ----------
   function postToBridge(d) {
     window.postMessage({ __vmic: TOKEN, to: 'bridge', ...d }, '*');
   }
@@ -105,7 +95,7 @@
     if (d.kind === 'audio' && d.audio !== undefined) { setAudioData(d.audio); everSynced = true; maybeLoadNoises(); }
     if (d.kind === 'noise' && d.name && d.audio !== undefined) setNoiseData(d.name, d.audio);
     if (d.kind === 'sync') {
-      if (d.clearAudio) { clearAudio(); everSynced = true; } // 列表删空/删当前文件 -> 显式清空（区别于空推送）
+      if (d.clearAudio) { clearAudio(); everSynced = true; }
       if (d.state) { applyState(d.state); everSynced = true; }
       if (d.audio !== undefined) { setAudioData(d.audio); everSynced = true; }
       if (d.transport) doTransport(d.transport);
@@ -117,12 +107,10 @@
     const prev = { ...state };
     Object.assign(state, patch || {});
     dbg('applyState', { patch });
-    if (state.enabled === false && prev.enabled === true) stopRec(); // 关闭注入即停
+    if (state.enabled === false && prev.enabled === true) stopRec();
     applyVolume();
   }
 
-  // 显式清空当前文件源。与 setAudioData 的"空推送不误清"守卫互补：
-  // 只有这里能主动清掉现有文件（删除当前文件/列表删空时由 SW 广播触发）。
   function clearAudio() {
     stopRec();
     audioRaw = null;
@@ -132,10 +120,6 @@
   }
 
   // ---------- 输入模块: 解码本地音频 ----------
-  // 幂等保证(核心原则: 只有用户主动换文件, 文件源才会更新):
-  //  1) 同一份文件(内容签名相同)重复推送 -> 直接忽略, 不重解码、不清状态
-  //  2) 收到空/非法数据时, 若已有文件 -> 保持现状, 绝不清空文件源
-  //  3) 页面自身不在录音流程里主动拉取/改写文件(见 ensureReady)
   async function hashBuf(buf) {
     try {
       const h = await crypto.subtle.digest('SHA-256', buf);
@@ -148,7 +132,6 @@
   }
 
   async function setAudioData(b64) {
-    // 消息传递只传 JSON 安全的 base64 字符串, 这里先解码回 ArrayBuffer
     let buf = null;
     if (typeof b64 === 'string' && b64) {
       try {
@@ -162,7 +145,6 @@
     }
     if (!buf || !buf.byteLength) {
       if (audioRaw) {
-        // 已有文件源时收到空/非法数据: 忽略, 绝不清空(防瞬时空推送)
         console.warn('[VMIC] 收到空/非法音频数据, 已忽略并保留当前文件源');
         return;
       }
@@ -229,11 +211,11 @@
     }
   }
 
-  // ---------- 处理模块: 建图(伪麦流 + 可选试听) ----------
+  // ---------- 处理模块 ----------
   function stopRec() {
     dbg('stopRec begin');
     if (recSrc) {
-      recSrc.__stopping = true; // 标记手动停止，onended 据此跳过自然结束清理
+      recSrc.__stopping = true; // 标记手动停止
       try { if (recSrc.__started) recSrc.stop(); } catch (e) { console.warn('[VMIC] recSrc.stop:', e); }
       try { recSrc.disconnect(); } catch (e) { console.warn('[VMIC] recSrc.disconnect:', e); }
       recSrc = null;
@@ -249,9 +231,6 @@
     if (recDest) { try { recDest.disconnect(); } catch (e) { console.warn('[VMIC] recDest.disconnect:', e); } recDest = null; }
   }
 
-  // 只停止音频源(recSrc/noiseSrc)，保留 recDest/recGain/monGain/noiseGain 不动。
-  // 用于 pause：伪流(recDest.stream)持续活着，网页复用流不会拿到已死流，
-  // 之后手动 play 可经 ensureRecSrc 重新注入音频到同一条流。
   function stopSrcOnly() {
     dbg('stopSrcOnly begin');
     if (recSrc) {
@@ -272,13 +251,13 @@
     const c = ensureCtx();
     if (!c || !audioBuffer) return null;
 
-    recDest = c.createMediaStreamDestination();      // -> 伪装麦克风
+    recDest = c.createMediaStreamDestination();
     try { recDestTrackId = recDest.stream.getAudioTracks()[0].id; } catch (e) { recDestTrackId = null; }
     recGain = c.createGain();
     recGain.gain.value = clampVol(state.volume);
     recGain.connect(recDest);
 
-    monGain = c.createGain();                         // -> 扬声器试听
+    monGain = c.createGain();
     monGain.gain.value = state.monitor ? clampVol(state.volume) : 0;
     monGain.connect(c.destination);
 
@@ -288,20 +267,23 @@
     recSrc.__started = false;
     recSrc.__stopping = false;
     recSrc.connect(recGain);
-    recSrc.connect(monGain); // 常连, 用增益 0 关断, 避免开关瞬间爆音
+    recSrc.connect(monGain);
 
-    // 监听自然播放结束: 清理 src 但保留 dest/recGain/monGain,
-    // 让伪流持续活着——网页复用流时仍可经手动重播重新注入音频
     const src = recSrc;
     recSrc.onended = () => {
       dbg('onended fired', { stopping: !!src.__stopping, isCurrent: recSrc === src });
-      if (src.__stopping) return; // 手动停止由 stopRec 统一清理
+      if (src.__stopping) return;
       try { src.disconnect(); } catch (e) {}
       if (recSrc === src) recSrc = null;
+      if (noiseSrc) {
+        try { if (noiseSrc.__started) noiseSrc.stop(); } catch (e) {}
+        try { noiseSrc.disconnect(); } catch (e) {}
+        noiseSrc = null;
+      }
       dbg('onended natural-end cleanup done');
     };
 
-    // 噪音覆盖: 选一个噪音循环混入 recDest(不进扬声器试听)
+    // 噪音覆盖
     dbg('noise check', { noiseOn: state.noiseOn, noiseLoaded, loadedKeys: Object.keys(noiseBuffers) });
     if (state.noiseOn && noiseLoaded) {
       const noiseName = state.noiseRandom
@@ -325,9 +307,6 @@
     return { src: recSrc, dest: recDest };
   }
 
-  // 仅重建源节点(recSrc)，保留 recDest/recGain/monGain 不动——用于音频自然播放结束后
-  // 的手动重播。这样伪流(recDest.stream)持续活着，网页若复用旧流仍能录到重新播放的音频，
-  // 而不是录到静音或拿到已死流导致录音失败。
   function ensureRecSrc() {
     if (recSrc) { dbg('ensureRecSrc skip: recSrc exists'); return true; }
     if (!ctx || !audioBuffer || !recGain || !monGain) { dbg('ensureRecSrc fail: missing deps', { ctx: !!ctx, buf: !!audioBuffer, rg: !!recGain, mg: !!monGain }); return false; }
@@ -344,11 +323,14 @@
       if (src.__stopping) return;
       try { src.disconnect(); } catch (e) {}
       if (recSrc === src) recSrc = null;
+      if (noiseSrc) {
+        try { if (noiseSrc.__started) noiseSrc.stop(); } catch (e) {}
+        try { noiseSrc.disconnect(); } catch (e) {}
+        noiseSrc = null;
+      }
       dbg('onended(ensure) natural-end cleanup done');
     };
 
-    // 噪音恢复：若噪音应开启但 noiseSrc 已被 stopSrcOnly 停掉，在此重建，
-    // 否则暂停后再自动播放会丢失噪音覆盖。
     if (state.noiseOn && noiseLoaded && !noiseSrc && recDest) {
       const noiseName = state.noiseRandom
         ? NOISE_NAMES[Math.floor(Math.random() * NOISE_NAMES.length)]
@@ -395,7 +377,7 @@
 
   function makeSilentStream() {
     const c = ensureCtx();
-    if (!c) return null; // 调用方兜底
+    if (!c) return null;
     if (c.state === 'suspended') c.resume().catch(() => {});
     return c.createMediaStreamDestination().stream;
   }
@@ -406,7 +388,7 @@
     if (monGain) monGain.gain.value = state.monitor ? v : 0;
   }
 
-  // ---------- 输出模块: 包装 API ----------
+  // ---------- 输出模块 ----------
   const md = navigator.mediaDevices;
   const origGUM = md && md.getUserMedia ? md.getUserMedia.bind(md) : null;
   const origEnum = md && md.enumerateDevices ? md.enumerateDevices.bind(md) : null;
@@ -414,13 +396,8 @@
   const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
   async function ensureReady() {
-    // 只在【从未收到过首次同步】时补发一次 hello(覆盖 bridge 加载竞态)。
-    // 同步完成后, 录音流程绝不主动去拉取/刷新音频——
-    // 文件源的更新只发生在 popup/picker 切换文件(广播)这一条用户主动路径上。
-    // 默认启用后 gUM 可能先于 bridge 的首次推送到达: 必须等 everSynced
-    // 再放行, 否则会误判"无文件"而立即返回静音流。
     if (!everSynced) postToBridge({ kind: 'hello' });
-    for (let i = 0; i < 80; i++) {            // 最多等 ~4s(解码较慢的大文件)
+    for (let i = 0; i < 80; i++) {
       if (everSynced && (audioRaw === null || decodeDone)) return;
       await waitMs(50);
     }
@@ -444,7 +421,7 @@
             stream = g.dest.stream;
           }
         }
-        if (!stream) stream = makeSilentStream(); // 无文件/解码失败: 静音兜底, 不报错
+        if (!stream) stream = makeSilentStream();
         if (!stream) throw new Error('VMIC 无法创建音频流');
 
         const wantVideo = !!(constraints && (constraints.video === true ||
@@ -452,13 +429,15 @@
         if (wantVideo) {
           const v = await origGUM({ video: constraints.video }).catch(() => null);
           if (v) return new MediaStream([...v.getVideoTracks(), stream.getAudioTracks()[0]]);
+          dbg('getUserMedia video fail -> fallback real');
+          return origGUM(constraints);
         }
         dbg('getUserMedia return stream');
-        return stream; // 纯音频请求 -> 页面只能拿到插件音频
+        return stream;
       } catch (e) {
         console.error('[VMIC] 伪流创建失败, 回退真实设备:', e);
         dbg('getUserMedia fallback to real', { msg: e.message });
-        return origGUM(constraints); // 极端兜底(几乎不会走到)
+        return origGUM(constraints);
       }
     };
   }
@@ -468,21 +447,18 @@
     md.enumerateDevices = async function () {
       let devs;
       try { devs = await origEnum(); } catch (e) { console.warn('[VMIC] enumerateDevices 首次失败，重试:', e); return origEnum(); }
+      if (!state.enabled) return devs;
       const out = devs.filter((d) => d.kind !== 'audioinput');
-      if (state.enabled) {
-        out.push({
-          deviceId: 'vmic-local-audio',
-          kind: 'audioinput',
-          label: '本地音频 (VMIC)',
-          groupId: 'vmic-group'
-        });
-      }
+      out.push({
+        deviceId: 'vmic-local-audio',
+        kind: 'audioinput',
+        label: '本地音频 (VMIC)',
+        groupId: 'vmic-group'
+      });
       return out;
     };
   }
 
-  // 包装 createMediaStreamSource：网页每次从伪流创建音频源(即开始从流取数据/录音)时，
-  // 在 auto 模式下触发自动播放。弥补网页复用流、不再调用 getUserMedia 导致的自动播放缺失。
   const ACProto = (window.AudioContext || window.webkitAudioContext);
   if (ACProto && ACProto.prototype && ACProto.prototype.createMediaStreamSource) {
     const origCreateMSS = ACProto.prototype.createMediaStreamSource;
@@ -504,9 +480,6 @@
     };
   }
 
-  // 包装 WebSocket：chivox 每次 startRecord 都会连接 WebSocket 上传音频数据，
-  // 这是"录音真正开始"的可靠信号（getUserMedia 只在 init 时调一次，不够）。
-  // 在 auto 模式下以此触发自动播放，对齐录音起点。
   const OrigWebSocket = window.WebSocket;
   if (OrigWebSocket) {
     const WSWrap = function (url, protocols) {
@@ -532,7 +505,7 @@
     window.WebSocket = WSWrap;
   }
 
-  // ---------- popup 控制(手动模式/试听) ----------
+  // ---------- popup 控制 ----------
   function doTransport(op) {
     if (!op) return;
     dbg('doTransport', { action: op.action, value: op.value });
@@ -547,7 +520,7 @@
         break;
       }
       case 'pause':
-        stopSrcOnly();                 // 只停源, 保留 recDest 让伪流持续活着, 避免网页复用流拿到死流
+        stopSrcOnly();
         break;
       case 'restart':
         if (c && c.state === 'suspended') c.resume().catch(() => {});
