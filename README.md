@@ -27,9 +27,9 @@
 ### 音频图
 
 ```
-recSrc ──→ recGain ──→ recDest ──→ 伪麦流
-              └──→ monGain  ──→ ctx.destination
-noiseSrc  ──→ noiseGain ──→ recDest
+recSrc ──> recGain ──> recDest ──> 伪麦流
+              └──> monGain  ──> ctx.destination
+noiseSrc  ──> noiseGain ──> recDest
 ```
 
 ## 快速验证
