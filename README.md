@@ -8,8 +8,8 @@
 
 ## 安装
 
-- `chrome://extensions` 开启「开发者模式」
-- 下载 Release 压缩包，解压后点击「加载已解压的扩展」选择目录即可
+- `chrome://extensions` 或 `edge://extensions` 开启「开发者模式」
+- 下载 Release 压缩包，解压后点击「加载解压缩/未打包的扩展」选择目录即可
 - 访问 `*.tsinghuaelt.com` 并登录
 
 ## 使用
