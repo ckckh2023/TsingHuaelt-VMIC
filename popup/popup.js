@@ -14,6 +14,7 @@ function say(text, ms) {
 }
 
 function renderState(st) {
+  st = st || {};
   const el = $('stateLine');
   const enabled = !!st.enabled;
   el.classList.toggle('off', !enabled);

@@ -429,7 +429,7 @@
         dbg('autoContinue: request nextFile', { oldSig });
         postToBridge({ kind: 'nextFile' });
         const _t0 = Date.now();
-        while (Date.now() - _t0 < 5000) {
+        while (Date.now() - _t0 < 2000) {
           if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
           await waitMs(50);
         }
