@@ -244,7 +244,7 @@
     panel = document.createElement('div');
     panel.className = 'panel';
     panel.innerHTML =
-      '<div class="hd"><span>网页音频捕获</span><span class="cnt"></span><span class="sp"></span>' +
+      '<div class="hd"><span>网页音频捕获</span><span class="sp"></span>' +
       '<button data-act="refresh" title="重新扫描">刷新</button>' +
       '<button data-act="close" title="收起">✕</button></div>' +
       '<ul></ul>' +
@@ -277,9 +277,11 @@
       host.style.top = y + 'px';
       host.style.right = 'auto';
       host.style.bottom = 'auto';
+      if (panelOpen) syncPanelSide();
     });
     ball.addEventListener('pointerup', () => {
       if (drag && !drag.moved) togglePanel();
+      else if (panelOpen) syncPanelSide();
       drag = null;
     });
 
@@ -301,6 +303,7 @@
     document.documentElement.appendChild(host);
     console.log('[VMIC CAP] 网页音频捕获控件已注入');
     updateBadge();
+    syncPanelSide();
   }
 
   function updateBadge() {
@@ -308,14 +311,25 @@
     const n = items.size;
     badge.textContent = String(n);
     badge.classList.toggle('on', n > 0);
-    const cnt = panel && panel.querySelector('.cnt');
-    if (cnt) cnt.textContent = n ? '（发现 ' + n + ' 项）' : '';
+  }
+
+  function syncPanelSide() {
+    if (!host || !panel) return;
+    const r = host.getBoundingClientRect();
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    if (r.left + r.width / 2 > vw / 2 || r.left + 340 > vw) {
+      panel.style.left = 'auto';
+      panel.style.right = '0';
+    } else {
+      panel.style.right = 'auto';
+      panel.style.left = '0';
+    }
   }
 
   function togglePanel() {
     panelOpen = !panelOpen;
     panel.classList.toggle('open', panelOpen);
-    if (panelOpen) { scanAll(); renderList(); }
+    if (panelOpen) { syncPanelSide(); scanAll(); renderList(); }
     else if (playingUrl) preview(null);
   }
 
