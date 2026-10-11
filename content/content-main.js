@@ -16,7 +16,8 @@
     noiseOn: true,     // 启用噪音覆盖
     noiseRandom: true, // 启用随机噪音
     noiseId: 'rain',   // 指定噪音名
-    noiseVol: 0.1      // 噪音音量
+    noiseVol: 0.1,     // 噪音音量
+    playbackRate: 1    // 变速变调
   };
 
   let ctx = null;              // 共享 AudioContext
@@ -39,6 +40,7 @@
   let noiseLoadRequested = false;
 
   const clampVol = (v) => Math.min(1, Math.max(0, Number(v) || 0));
+  const clampRate = (v) => Math.min(4, Math.max(0.25, Number(v) || 1));
 
   // ---------- 调试日志 ----------
   function dbgSnapshot() {
@@ -108,6 +110,9 @@
     Object.assign(state, patch || {});
     dbg('applyState', { patch });
     if (state.enabled === false && prev.enabled === true) stopRec();
+    if (state.playbackRate !== prev.playbackRate && recSrc) {
+      recSrc.playbackRate.value = clampRate(state.playbackRate);
+    }
     applyVolume();
   }
 
@@ -264,6 +269,7 @@
     recSrc = c.createBufferSource();
     recSrc.buffer = audioBuffer;
     recSrc.loop = !!state.loop;
+    recSrc.playbackRate.value = clampRate(state.playbackRate);
     recSrc.__started = false;
     recSrc.__stopping = false;
     recSrc.connect(recGain);
@@ -313,6 +319,7 @@
     recSrc = ctx.createBufferSource();
     recSrc.buffer = audioBuffer;
     recSrc.loop = !!state.loop;
+    recSrc.playbackRate.value = clampRate(state.playbackRate);
     recSrc.__started = false;
     recSrc.__stopping = false;
     recSrc.connect(recGain);
@@ -554,6 +561,10 @@
       case 'loop':
         state.loop = !!op.value;
         if (recSrc) recSrc.loop = state.loop;
+        break;
+      case 'playbackRate':
+        state.playbackRate = clampRate(op.value);
+        if (recSrc) recSrc.playbackRate.value = state.playbackRate;
         break;
       case 'noiseVol':
         state.noiseVol = clampVol(op.value);

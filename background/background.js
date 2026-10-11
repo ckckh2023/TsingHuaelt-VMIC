@@ -15,7 +15,8 @@ const DEFAULTS = {
   noiseOn: true,     // 启用噪音覆盖
   noiseRandom: true, // 启用随机噪音
   noiseId: 'rain',   // 指定噪音名
-  noiseVol: 0.1      // 噪音音量
+  noiseVol: 0.1,     // 噪音音量
+  playbackRate: 1    // 变速变调
 };
 
 

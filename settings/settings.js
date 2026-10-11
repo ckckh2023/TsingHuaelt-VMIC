@@ -30,6 +30,8 @@ async function refresh() {
     $('delayLabel').textContent = r.state.delayMs + ' ms';
     $('volume').value = Math.round((r.state.volume || 1) * 100);
     $('volLabel').textContent = $('volume').value + '%';
+    $('rate').value = Math.round((r.state.playbackRate || 1) * 100);
+    $('rateLabel').textContent = $('rate').value + '%';
     $('monitor').checked = r.state.monitor !== false;
     $('loop').checked = !!r.state.loop;
     $('noiseOn').checked = r.state.noiseOn !== false;
@@ -77,6 +79,16 @@ $('volume').addEventListener('input', () => {
   const v = Number($('volume').value) / 100;
   $('volLabel').textContent = Math.round(v * 100) + '%';
   debouncedSetVolume(v);
+});
+
+const debouncedSetRate = debounce((v) => {
+  setState({ playbackRate: v });
+  send({ cmd: 'transport', op: { action: 'playbackRate', value: v } });
+}, 150);
+$('rate').addEventListener('input', () => {
+  const v = Number($('rate').value) / 100;
+  $('rateLabel').textContent = Math.round(v * 100) + '%';
+  debouncedSetRate(v);
 });
 
 $('monitor').addEventListener('change', () => {
