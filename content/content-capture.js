@@ -50,6 +50,7 @@
 
   // ---------- 捕获列表 ----------
   const items = new Map();
+  const clearedUrls = new Set();   // 当前页面已清空的 URL（仅本页生效，刷新重置）
   let playingUrl = null;
   let clearArmed = false;
   let clearTimer = null;
@@ -79,6 +80,7 @@
 
   function addItem(url, srcType, duration) {
     if (!url || !/^(https?:|blob:|data:)/i.test(url)) return;
+    if (clearedUrls.has(url)) return; // 已被用户清空，不再重新加入
     if (filterDing && nameOf(url) === 'ding.mp3') return; // 过滤站点提示音 ding.mp3
     if (filterMinSec > 0 && duration != null && !isNaN(duration) && duration > 0 && duration < filterMinSec) return;
     if (items.has(url)) {
@@ -334,6 +336,7 @@
             hd.textContent = '清空';
             hd.style.color = '';
             if (playingUrl) preview(null);
+            for (const u of items.keys()) clearedUrls.add(u);
             items.clear(); updateBadge(); if (panelOpen) renderList();
           } else {
             clearArmed = true;
