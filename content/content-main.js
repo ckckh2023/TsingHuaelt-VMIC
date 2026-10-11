@@ -30,6 +30,21 @@
   let recSrc = null;
   let recDest = null;
   let curPlayed = false;   // 当前 audioSig 是否已播放过
+
+  async function maybeAdvance() {
+    if (!(state.autoContinue && curPlayed && state.audioSig)) return false;
+    const oldSig = state.audioSig;
+    curPlayed = false;
+    dbg('autoContinue: request nextFile', { oldSig });
+    postToBridge({ kind: 'nextFile' });
+    const _t0 = Date.now();
+    while (Date.now() - _t0 < 2000) {
+      if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
+      await waitMs(50);
+    }
+    dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
+    return state.audioSig !== oldSig;
+  }
   let recGain = null;
   let monGain = null;
   let recDestTrackId = null;   // 伪流 audio track 的 id
@@ -423,18 +438,7 @@
       await ensureReady();
       if (!state.enabled) { dbg('getUserMedia disabled after wait'); return origGUM(constraints); }
 
-      if (state.autoContinue && curPlayed && state.audioSig) {
-        const oldSig = state.audioSig;
-        curPlayed = false;
-        dbg('autoContinue: request nextFile', { oldSig });
-        postToBridge({ kind: 'nextFile' });
-        const _t0 = Date.now();
-        while (Date.now() - _t0 < 2000) {
-          if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
-          await waitMs(50);
-        }
-        dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
-      }
+      await maybeAdvance();
 
       let stream = null;
       try {
@@ -497,8 +501,13 @@
           if (state.enabled && state.mode === 'auto' && audioBuffer) {
             const c = ensureCtx();
             if (c && c.state === 'suspended') c.resume().catch(() => {});
-            if (recDest && !recSrc) ensureRecSrc();
-            if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
+          if (recDest && !recSrc) ensureRecSrc();
+          if (recSrc && !recSrc.__started) {
+            (async () => {
+              await maybeAdvance();
+              if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
+            })();
+          }
           }
         }
       } catch (e) { console.warn('[VMIC] createMediaStreamSource 包装异常:', e); }
@@ -518,7 +527,12 @@
           if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (!recDest) { dbg('WS auto: no recDest -> startRecGraph'); startRecGraph(); }
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
-          if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
+          if (recSrc && !recSrc.__started) {
+            (async () => {
+              await maybeAdvance();
+              if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
+            })();
+          }
         }
       } catch (e) { console.warn('[VMIC] WebSocket 包装异常:', e); }
       return ws;
