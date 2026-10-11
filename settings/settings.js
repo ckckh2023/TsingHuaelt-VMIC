@@ -38,6 +38,13 @@ async function refresh() {
     $('filterMin').value = secToSlider(fmsDisp);
     $('filterMinLabel').textContent = fmtSec(fmsDisp);
     $('filterDing').checked = r.state.filterDing !== false;
+    $('monitor').checked = r.state.monitor !== false;
+    $('loop').checked = !!r.state.loop;
+    $('noiseOn').checked = r.state.noiseOn !== false;
+    $('noiseRandom').checked = r.state.noiseRandom !== false;
+    $('noiseId').value = r.state.noiseId || 'rain';
+    $('noiseVol').value = Math.round((r.state.noiseVol != null ? r.state.noiseVol : 0.1) * 100);
+    $('noiseVolLabel').textContent = $('noiseVol').value + '%';
     syncDelayRow();
     syncNoiseRow();
   } catch (e) {
