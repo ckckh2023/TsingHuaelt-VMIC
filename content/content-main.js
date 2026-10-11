@@ -504,7 +504,13 @@
           if (recDest && !recSrc) ensureRecSrc();
           if (recSrc && !recSrc.__started) {
             (async () => {
-              await maybeAdvance();
+              const advanced = await maybeAdvance();
+              if (advanced && recSrc) {
+                try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
+                try { recSrc.disconnect(); } catch (_) {}
+                recSrc = null;
+                ensureRecSrc();
+              }
               if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
             })();
           }
@@ -529,7 +535,13 @@
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
           if (recSrc && !recSrc.__started) {
             (async () => {
-              await maybeAdvance();
+              const advanced = await maybeAdvance();
+              if (advanced && recSrc) {
+                try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
+                try { recSrc.disconnect(); } catch (_) {}
+                recSrc = null;
+                ensureRecSrc();
+              }
               if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
             })();
           }
