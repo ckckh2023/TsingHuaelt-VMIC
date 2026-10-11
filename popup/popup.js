@@ -198,30 +198,34 @@ $('lnkSettings').addEventListener('click', (e) => {
     el.textContent = '检查中…';
     try {
       const SOURCES = [
-        'https://api.github.com/repos/' + REPO + '/releases/latest',
-        'https://gitee.com/api/v5/repos/' + REPO + '/releases/latest',
-        'https://gitcode.com/api/v5/repos/' + REPO + '/releases/latest',
+        'https://api.github.com/repos/' + REPO + '/tags',
+        'https://gitee.com/api/v5/repos/' + REPO + '/tags',
+        'https://gitcode.com/api/v5/repos/' + REPO + '/tags',
       ];
-      let data = null, used = '';
+      let tags = null, used = '';
       for (const api of SOURCES) {
         try {
           const res = await fetch(api, { cache: 'no-store' });
           if (!res.ok) continue;
-          data = await res.json();
-          if (data && data.tag_name) { used = api; break; }
+          tags = await res.json();
+          if (Array.isArray(tags) && tags.length) { used = api; break; }
         } catch (_) {}
       }
-      if (!data || !data.tag_name) throw new Error('所有更新源均不可用');
-      const tag = (data.tag_name || '').replace(/^v/i, '');
+      if (!tags || !tags.length) throw new Error('所有更新源均不可用');
+      let best = '', bestRaw = '';
+      for (const t of tags) {
+        const name = (t.name || '').replace(/^v/i, '');
+        if (!name) continue;
+        if (!best || newer(name, best)) { best = name; bestRaw = t.name; }
+      }
+      if (!best) throw new Error('未找到版本标签');
       const cur = chrome.runtime.getManifest().version;
-      if (newer(tag, cur)) {
-        el.textContent = '新版本 ' + tag;
-        let jump = data.html_url;
-        if (!jump) {
-          if (used.indexOf('gitee.com') >= 0) jump = 'https://gitee.com/' + REPO + '/releases/' + tag;
-          else if (used.indexOf('gitcode.com') >= 0) jump = 'https://gitcode.com/' + REPO + '/releases/' + tag;
-          else jump = 'https://github.com/' + REPO + '/releases/tag/' + tag;
-        }
+      if (newer(best, cur)) {
+        el.textContent = '新版本 ' + best;
+        let jump;
+        if (used.indexOf('gitee.com') >= 0) jump = 'https://gitee.com/' + REPO + '/releases/' + bestRaw;
+        else if (used.indexOf('gitcode.com') >= 0) jump = 'https://gitcode.com/' + REPO + '/releases/' + bestRaw;
+        else jump = 'https://github.com/' + REPO + '/releases/tag/' + bestRaw;
         window.open(jump, '_blank');
       } else {
         el.textContent = '已是最新';
