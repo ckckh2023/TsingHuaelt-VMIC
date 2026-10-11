@@ -51,6 +51,8 @@
   // ---------- 捕获列表 ----------
   const items = new Map();
   let playingUrl = null;
+  let clearArmed = false;
+  let clearTimer = null;
 
   // ---------- 过滤设置 ----------
   let filterMinSec = 0;
@@ -281,6 +283,7 @@
     panel.className = 'panel';
     panel.innerHTML =
       '<div class="hd"><span>网页音频捕获</span><span class="sp"></span>' +
+      '<button data-act="clear" title="清空列表">清空</button>' +
       '<button data-act="refresh" title="重新扫描">刷新</button>' +
       '<button data-act="close" title="收起">✕</button></div>' +
       '<ul></ul>' +
@@ -324,6 +327,27 @@
     panel.addEventListener('click', (e) => {
       const hd = e.target.closest('.hd button');
       if (hd) {
+        if (hd.dataset.act === 'clear') {
+          if (clearArmed) {
+            clearArmed = false;
+            if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+            hd.textContent = '清空';
+            hd.style.color = '';
+            if (playingUrl) preview(null);
+            items.clear(); updateBadge(); if (panelOpen) renderList();
+          } else {
+            clearArmed = true;
+            hd.textContent = '确认？';
+            hd.style.color = '#ff6b6b';
+            if (clearTimer) clearTimeout(clearTimer);
+            clearTimer = setTimeout(() => {
+              clearArmed = false;
+              clearTimer = null;
+              const bb = panel && panel.querySelector('[data-act="clear"]');
+              if (bb) { bb.textContent = '清空'; bb.style.color = ''; }
+            }, 3000);
+          }
+        }
         if (hd.dataset.act === 'refresh') scanAll();
         if (hd.dataset.act === 'close') togglePanel();
         return;
@@ -388,7 +412,7 @@
     if (!items.size) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = '未发现音频：先播放网页中的音频，再点刷新';
+      li.textContent = '未发现音频！';
       listEl.appendChild(li);
       return;
     }
