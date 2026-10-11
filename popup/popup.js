@@ -13,12 +13,14 @@ function say(text, ms) {
   }, ms);
 }
 
-function renderState(enabled) {
+function renderState(st) {
   const el = $('stateLine');
+  const enabled = !!st.enabled;
   el.classList.toggle('off', !enabled);
-  el.textContent = enabled
-    ? '● 注入已启用'
-    : '○ 注入已停用';
+  const parts = [enabled ? '● 注入已启用' : '○ 注入已停用'];
+  if (st.autoContinue) parts.push('自动连播');
+  if (st.loop) parts.push('循环');
+  el.textContent = parts.join(' · ');
 }
 
 function renderList() {
@@ -180,7 +182,7 @@ $('lnkSettings').addEventListener('click', (e) => {
 (async function init() {
   try {
     const [s, lib] = await Promise.all([send({ cmd: 'getState' }), send({ cmd: 'getLib' })]);
-    if (s && s.ok) renderState(!!s.state.enabled);
+    if (s && s.ok) renderState(s.state);
     if (lib && lib.ok) { list = lib.list || []; currentId = lib.currentId; }
   } catch (e) {
     say('加载失败：' + e);

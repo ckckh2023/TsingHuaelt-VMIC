@@ -18,7 +18,8 @@ const DEFAULTS = {
   noiseVol: 0.1,     // 噪音音量
   playbackRate: 1,   // 变速变调
   filterMinSec: 0,   // 过滤短音频阈值（秒，0=不过滤）
-  filterDing: true   // 过滤 ding 提示音
+  filterDing: true,  // 过滤 ding 提示音
+  autoContinue: false // 自动连播
 };
 
 
@@ -190,6 +191,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         await idbPut('cur', msg.id);
         sendResponse({ ok: true, list: lib.list, currentId: msg.id });
+        await pushCurrentAudio();
+        return;
+      }
+      case 'nextFile': {
+        const lib = await getLib();
+        if (!lib.list.length) { sendResponse({ ok: false, error: 'empty list' }); return; }
+        const curIdx = lib.list.findIndex((x) => x.id === lib.currentId);
+        const nextIdx = curIdx < 0 ? 0 : (curIdx + 1) % lib.list.length;
+        const nextId = lib.list[nextIdx].id;
+        await idbPut('cur', nextId);
+        sendResponse({ ok: true, list: lib.list, currentId: nextId });
         await pushCurrentAudio();
         return;
       }

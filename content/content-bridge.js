@@ -35,6 +35,9 @@
       pushAudio();
     }
     if (d.kind === 'getNoise' && d.name) pushNoise(d.name);
+    if (d.kind === 'nextFile') {
+      try { chrome.runtime.sendMessage({ cmd: 'nextFile' }).catch(() => {}); } catch (_) {}
+    }
   });
 
   setTimeout(() => {

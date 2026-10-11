@@ -17,7 +17,8 @@
     noiseRandom: true, // 启用随机噪音
     noiseId: 'rain',   // 指定噪音名
     noiseVol: 0.1,     // 噪音音量
-    playbackRate: 1    // 变速变调
+    playbackRate: 1,   // 变速变调
+    autoContinue: false // 自动连播
   };
 
   let ctx = null;              // 共享 AudioContext
@@ -28,6 +29,7 @@
 
   let recSrc = null;
   let recDest = null;
+  let curPlayed = false;   // 当前 audioSig 是否已播放过
   let recGain = null;
   let monGain = null;
   let recDestTrackId = null;   // 伪流 audio track 的 id
@@ -160,6 +162,7 @@
     }
     const sig = await hashBuf(buf);
     if (audioRaw && sig && sig === state.audioSig) return;
+    if (sig && sig !== state.audioSig) curPlayed = false;
     state.audioSig = sig || '';
 
     audioRaw = buf;
@@ -369,6 +372,7 @@
     try {
       recSrc.start(t);
       recSrc.__started = true;
+      curPlayed = true;
       if (noiseSrc && !noiseSrc.__started) {
         try { noiseSrc.start(t); noiseSrc.__started = true; }
         catch (e) { console.warn('[VMIC] 噪音启动失败:', e); }
@@ -418,6 +422,19 @@
 
       await ensureReady();
       if (!state.enabled) { dbg('getUserMedia disabled after wait'); return origGUM(constraints); }
+
+      if (state.autoContinue && curPlayed && state.audioSig) {
+        const oldSig = state.audioSig;
+        curPlayed = false;
+        dbg('autoContinue: request nextFile', { oldSig });
+        postToBridge({ kind: 'nextFile' });
+        const _t0 = Date.now();
+        while (Date.now() - _t0 < 5000) {
+          if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
+          await waitMs(50);
+        }
+        dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
+      }
 
       let stream = null;
       try {

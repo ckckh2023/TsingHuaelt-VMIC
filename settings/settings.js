@@ -40,6 +40,7 @@ async function refresh() {
     $('filterDing').checked = r.state.filterDing !== false;
     $('monitor').checked = r.state.monitor !== false;
     $('loop').checked = !!r.state.loop;
+    $('autoContinue').checked = !!r.state.autoContinue;
     $('noiseOn').checked = r.state.noiseOn !== false;
     $('noiseRandom').checked = r.state.noiseRandom !== false;
     $('noiseId').value = r.state.noiseId || 'rain';
@@ -137,6 +138,10 @@ $('loop').addEventListener('change', () => {
   const on = $('loop').checked;
   setState({ loop: on });
   send({ cmd: 'transport', op: { action: 'loop', value: on } });
+});
+$('autoContinue').addEventListener('change', () => {
+  setState({ autoContinue: $('autoContinue').checked },
+    $('autoContinue').checked ? '自动连播已开' : '自动连播已关');
 });
 
 $('noiseOn').addEventListener('change', () => {
