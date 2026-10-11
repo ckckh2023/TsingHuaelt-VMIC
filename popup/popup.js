@@ -180,6 +180,59 @@ $('lnkSettings').addEventListener('click', (e) => {
   chrome.runtime.openOptionsPage();
 });
 
+(function () {
+  const REPO = 'ckckh2023/TsingHuaelt-VMIC';
+  function newer(a, b) {
+    const pa = (a || '').split('.').map(Number);
+    const pb = (b || '').split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      if ((pa[i] || 0) > (pb[i] || 0)) return true;
+      if ((pa[i] || 0) < (pb[i] || 0)) return false;
+    }
+    return false;
+  }
+  $('lnkUpdate').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const el = $('lnkUpdate');
+    const old = el.textContent;
+    el.textContent = '检查中…';
+    try {
+      const SOURCES = [
+        'https://api.github.com/repos/' + REPO + '/releases/latest',
+        'https://gitee.com/api/v5/repos/' + REPO + '/releases/latest',
+        'https://gitcode.com/api/v5/repos/' + REPO + '/releases/latest',
+      ];
+      let data = null, used = '';
+      for (const api of SOURCES) {
+        try {
+          const res = await fetch(api, { cache: 'no-store' });
+          if (!res.ok) continue;
+          data = await res.json();
+          if (data && data.tag_name) { used = api; break; }
+        } catch (_) {}
+      }
+      if (!data || !data.tag_name) throw new Error('所有更新源均不可用');
+      const tag = (data.tag_name || '').replace(/^v/i, '');
+      const cur = chrome.runtime.getManifest().version;
+      if (newer(tag, cur)) {
+        el.textContent = '新版本 ' + tag;
+        let jump = data.html_url;
+        if (!jump) {
+          if (used.indexOf('gitee.com') >= 0) jump = 'https://gitee.com/' + REPO + '/releases/' + tag;
+          else if (used.indexOf('gitcode.com') >= 0) jump = 'https://gitcode.com/' + REPO + '/releases/' + tag;
+          else jump = 'https://github.com/' + REPO + '/releases/tag/' + tag;
+        }
+        window.open(jump, '_blank');
+      } else {
+        el.textContent = '已是最新';
+      }
+    } catch (err) {
+      el.textContent = old;
+      say('检查更新失败：' + (err.message || err), 3000);
+    }
+  });
+})();
+
 (async function init() {
   try {
     const [s, lib] = await Promise.all([send({ cmd: 'getState' }), send({ cmd: 'getLib' })]);
