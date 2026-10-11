@@ -35,7 +35,7 @@
   <div class="card">
     <div class="label">输出控制</div>
     <div class="row">
-      <span>音量</span>
+      <span>音量大小</span>
       <input type="range" id="volume" min="0" max="100" step="5">
       <span id="volLabel">100%</span>
     </div>
@@ -78,6 +78,24 @@
       <input type="range" id="noiseVol" min="0" max="100" step="5">
       <span id="noiseVolLabel">10%</span>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="label">悬浮球过滤</div>
+    <label class="row switch">
+      <input type="checkbox" id="filterMinOn">
+      <span>过滤短音频</span>
+    </label>
+    <div class="row">
+      <span>过滤边界</span>
+      <input type="range" id="filterMin" min="0" max="100" step="1">
+      <span id="filterMinLabel">0.5 s</span>
+    </div>
+    <div class="hint">少于该秒数的页面音频不加入捕获列表</div>
+    <label class="row switch">
+      <input type="checkbox" id="filterDing" checked>
+      <span>过滤 ding 提示音</span>
+    </label>
   </div>
 
   <div id="status" class="status"></div>

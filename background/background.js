@@ -16,7 +16,9 @@ const DEFAULTS = {
   noiseRandom: true, // 启用随机噪音
   noiseId: 'rain',   // 指定噪音名
   noiseVol: 0.1,     // 噪音音量
-  playbackRate: 1    // 变速变调
+  playbackRate: 1,   // 变速变调
+  filterMinSec: 0,   // 过滤短音频阈值（秒，0=不过滤）
+  filterDing: true   // 过滤 ding 提示音
 };
 
 

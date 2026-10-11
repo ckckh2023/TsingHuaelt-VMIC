@@ -52,9 +52,33 @@
   const items = new Map();
   let playingUrl = null;
 
-  function addItem(url, srcType) {
+  // ---------- 过滤设置 ----------
+  let filterMinSec = 0;
+  let filterDing = true;
+
+  try {
+    chrome.runtime.sendMessage({ cmd: 'getState' }).then((r) => {
+      if (r && r.ok && r.state) {
+        filterMinSec = Number(r.state.filterMinSec) || 0;
+        filterDing = r.state.filterDing !== false;
+        applyFilters();
+        scanAll();
+      }
+    }).catch(() => {});
+  } catch (_) {}
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.cmd !== 'pageSync' || !msg.state) return;
+    let changed = false;
+    if (msg.state.filterMinSec != null) { filterMinSec = Number(msg.state.filterMinSec) || 0; changed = true; }
+    if (msg.state.filterDing != null) { filterDing = msg.state.filterDing !== false; changed = true; }
+    if (changed) { applyFilters(); scanAll(); }
+  });
+
+  function addItem(url, srcType, duration) {
     if (!url || !/^(https?:|blob:|data:)/i.test(url)) return;
-    if (nameOf(url) === 'ding.mp3') return; // 忽略站点提示音 ding.mp3
+    if (filterDing && nameOf(url) === 'ding.mp3') return; // 过滤站点提示音 ding.mp3
+    if (filterMinSec > 0 && duration != null && !isNaN(duration) && duration > 0 && duration < filterMinSec) return;
     if (items.has(url)) {
       const it = items.get(url);
       if (srcType === 'dom' && it.src === 'net') it.src = 'dom';
@@ -62,7 +86,7 @@
     }
     items.set(url, {
       url, name: nameOf(url), src: srcType, size: null, mime: '',
-      status: 'idle', err: ''
+      status: 'idle', err: '', duration: duration || null
     });
     updateBadge();
     if (panelOpen) renderList();
@@ -72,7 +96,19 @@
     const els = document.querySelectorAll('audio, video, audio source, video source');
     for (const el of els) {
       const u = el.currentSrc || el.src || el.getAttribute('src') || '';
-      if (u) addItem(u, 'dom');
+      if (!u) continue;
+      addItem(u, 'dom', el.duration);
+      if (filterMinSec > 0 && (el.tagName === 'AUDIO' || el.tagName === 'VIDEO')) {
+        const d = el.duration;
+        if (!d || isNaN(d)) {
+          el.addEventListener('loadedmetadata', () => {
+            const dd = el.duration;
+            if (dd && !isNaN(dd) && dd < filterMinSec && items.has(u)) {
+              items.delete(u); updateBadge(); if (panelOpen) renderList();
+            }
+          }, { once: true });
+        }
+      }
     }
   }
 
@@ -324,6 +360,18 @@
       panel.style.right = 'auto';
       panel.style.left = '0';
     }
+  }
+
+  function applyFilters() {
+    if (!items.size) return;
+    let changed = false;
+    for (const [url, it] of items) {
+      let drop = false;
+      if (filterDing && nameOf(url) === 'ding.mp3') drop = true;
+      if (filterMinSec > 0 && it.duration && !isNaN(it.duration) && it.duration < filterMinSec) drop = true;
+      if (drop) { items.delete(url); changed = true; }
+    }
+    if (changed) { updateBadge(); if (panelOpen) renderList(); }
   }
 
   function togglePanel() {

@@ -32,13 +32,12 @@ async function refresh() {
     $('volLabel').textContent = $('volume').value + '%';
     $('rate').value = Math.round((r.state.playbackRate || 1) * 100);
     $('rateLabel').textContent = $('rate').value + '%';
-    $('monitor').checked = r.state.monitor !== false;
-    $('loop').checked = !!r.state.loop;
-    $('noiseOn').checked = r.state.noiseOn !== false;
-    $('noiseRandom').checked = r.state.noiseRandom !== false;
-    $('noiseId').value = r.state.noiseId || 'rain';
-    $('noiseVol').value = Math.round((r.state.noiseVol != null ? r.state.noiseVol : 0.1) * 100);
-    $('noiseVolLabel').textContent = $('noiseVol').value + '%';
+    const fms = Number(r.state.filterMinSec) || 0;
+    $('filterMinOn').checked = fms > 0;
+    const fmsDisp = fms > 0 ? fms : 0.5;
+    $('filterMin').value = secToSlider(fmsDisp);
+    $('filterMinLabel').textContent = fmtSec(fmsDisp);
+    $('filterDing').checked = r.state.filterDing !== false;
     syncDelayRow();
     syncNoiseRow();
   } catch (e) {
@@ -89,6 +88,36 @@ $('rate').addEventListener('input', () => {
   const v = Number($('rate').value) / 100;
   $('rateLabel').textContent = Math.round(v * 100) + '%';
   debouncedSetRate(v);
+});
+
+function sliderToSec(s) {
+  if (s <= 50) return 0.1 + (s / 50) * 0.9;
+  return 1 + ((s - 50) / 50) * 29;
+}
+function secToSlider(sec) {
+  if (sec <= 1) return Math.round((sec - 0.1) / 0.9 * 50);
+  return Math.round(50 + (sec - 1) / 29 * 50);
+}
+function fmtSec(sec) {
+  return (sec < 10 ? sec.toFixed(1) : String(Math.round(sec))) + ' s';
+}
+
+const debouncedSetFilterMin = debounce((v) => setState({ filterMinSec: v }), 150);
+$('filterMin').addEventListener('input', () => {
+  const sec = sliderToSec(Number($('filterMin').value));
+  $('filterMinLabel').textContent = fmtSec(sec);
+  if ($('filterMinOn').checked) debouncedSetFilterMin(sec);
+});
+$('filterMinOn').addEventListener('change', () => {
+  if ($('filterMinOn').checked) {
+    setState({ filterMinSec: sliderToSec(Number($('filterMin').value)) });
+  } else {
+    setState({ filterMinSec: 0 });
+  }
+});
+$('filterDing').addEventListener('change', () => {
+  setState({ filterDing: $('filterDing').checked },
+    $('filterDing').checked ? '已过滤 ding' : '已放行 ding');
 });
 
 $('monitor').addEventListener('change', () => {
