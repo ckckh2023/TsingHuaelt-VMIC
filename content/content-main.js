@@ -31,7 +31,7 @@
   let recDest = null;
   let curPlayed = false;   // 当前 audioSig 是否已播放过
   let advancing = false;   // maybeAdvance 重入锁
-  let gumJustHandled = false; // getUserMedia 已处理连播，紧接着的 createMediaStreamSource/WebSocket 跳过
+  let playStartTime = 0; // playNow 时间戳，同轮多次 createMediaStreamSource/WebSocket 不重复切
 
   async function maybeAdvance() {
     if (advancing) { dbg('autoContinue: already advancing, skip'); return false; }
@@ -396,6 +396,7 @@
       recSrc.start(t);
       recSrc.__started = true;
       curPlayed = true;
+      playStartTime = Date.now();
       if (noiseSrc && !noiseSrc.__started) {
         try { noiseSrc.start(t); noiseSrc.__started = true; }
         catch (e) { console.warn('[VMIC] 噪音启动失败:', e); }
@@ -447,7 +448,7 @@
       if (!state.enabled) { dbg('getUserMedia disabled after wait'); return origGUM(constraints); }
 
       await maybeAdvance();
-      gumJustHandled = true;
+
 
       let stream = null;
       try {
@@ -511,9 +512,8 @@
             const c = ensureCtx();
             if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (recDest && !recSrc) ensureRecSrc();
-          const skipAdvance = gumJustHandled;
-          gumJustHandled = false;
-          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !skipAdvance))) {
+          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < 1500);
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !justStarted))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
@@ -544,9 +544,8 @@
           if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (!recDest) { dbg('WS auto: no recDest -> startRecGraph'); startRecGraph(); }
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
-          const skipAdvance = gumJustHandled;
-          gumJustHandled = false;
-          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !skipAdvance))) {
+          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < 1500);
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !justStarted))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
