@@ -31,6 +31,7 @@
   let recDest = null;
   let curPlayed = false;   // 当前 audioSig 是否已播放过
   let advancing = false;   // maybeAdvance 重入锁
+  let gumJustHandled = false; // getUserMedia 已处理连播，紧接着的 createMediaStreamSource/WebSocket 跳过
 
   async function maybeAdvance() {
     if (advancing) { dbg('autoContinue: already advancing, skip'); return false; }
@@ -446,6 +447,7 @@
       if (!state.enabled) { dbg('getUserMedia disabled after wait'); return origGUM(constraints); }
 
       await maybeAdvance();
+      gumJustHandled = true;
 
       let stream = null;
       try {
@@ -509,7 +511,9 @@
             const c = ensureCtx();
             if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (recDest && !recSrc) ensureRecSrc();
-          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed))) {
+          const skipAdvance = gumJustHandled;
+          gumJustHandled = false;
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !skipAdvance))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
@@ -540,7 +544,9 @@
           if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (!recDest) { dbg('WS auto: no recDest -> startRecGraph'); startRecGraph(); }
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
-          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed))) {
+          const skipAdvance = gumJustHandled;
+          gumJustHandled = false;
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !skipAdvance))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
