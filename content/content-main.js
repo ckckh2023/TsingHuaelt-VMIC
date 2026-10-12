@@ -30,20 +30,27 @@
   let recSrc = null;
   let recDest = null;
   let curPlayed = false;   // 当前 audioSig 是否已播放过
+  let advancing = false;   // maybeAdvance 重入锁
 
   async function maybeAdvance() {
+    if (advancing) { dbg('autoContinue: already advancing, skip'); return false; }
     if (!(state.autoContinue && curPlayed && state.audioSig)) return false;
+    advancing = true;
     const oldSig = state.audioSig;
     curPlayed = false;
     dbg('autoContinue: request nextFile', { oldSig });
     postToBridge({ kind: 'nextFile' });
     const _t0 = Date.now();
-    while (Date.now() - _t0 < 2000) {
-      if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
-      await waitMs(50);
+    try {
+      while (Date.now() - _t0 < 2000) {
+        if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
+        await waitMs(50);
+      }
+      dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
+      return state.audioSig !== oldSig;
+    } finally {
+      advancing = false;
     }
-    dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
-    return state.audioSig !== oldSig;
   }
   let recGain = null;
   let monGain = null;
@@ -502,7 +509,7 @@
             const c = ensureCtx();
             if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (recDest && !recSrc) ensureRecSrc();
-          if (recSrc && !recSrc.__started) {
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
@@ -533,7 +540,7 @@
           if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (!recDest) { dbg('WS auto: no recDest -> startRecGraph'); startRecGraph(); }
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
-          if (recSrc && !recSrc.__started) {
+          if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed))) {
             (async () => {
               const advanced = await maybeAdvance();
               if (advanced && recSrc) {
