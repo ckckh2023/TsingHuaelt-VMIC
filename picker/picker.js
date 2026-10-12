@@ -29,6 +29,7 @@ async function renderList() {
     const list = r.list || [];
     $('listMeta').textContent = list.length ? '（' + list.length + ' 项，高亮项为当前选中）' : '';
     syncClearBtn(list.length);
+    $('btnExport').disabled = !list.length;
     if (!list.length) {
       const li = document.createElement('li');
       li.className = 'empty';
@@ -64,6 +65,7 @@ async function renderList() {
     }
   } catch (e) {
     syncClearBtn(0);
+    $('btnExport').disabled = true;
     const li = document.createElement('li');
     li.className = 'empty';
     li.textContent = '读取列表失败：' + e;
@@ -199,6 +201,53 @@ $('list').addEventListener('click', (e) => {
 
 $('btnFiles').addEventListener('click', () => $('file').click());
 $('btnFolder').addEventListener('click', () => $('folder').click());
+
+// 导出到文件夹
+async function exportToFolder() {
+  const btn = $('btnExport');
+  if (btn.disabled) return;
+  if (!window.showDirectoryPicker) {
+    setStatus('当前浏览器不支持文件夹选择，请使用 Chrome 86+ 或 Edge 86+', false);
+    return;
+  }
+  try {
+    const r = await send({ cmd: 'getLib' });
+    if (!r || !r.ok) throw new Error((r && r.error) || 'getLib 失败');
+    const list = r.list || [];
+    if (!list.length) { setStatus('列表为空，无可导出文件', false); return; }
+
+    const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+    btn.disabled = true;
+    let exported = 0;
+    const failed = [];
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
+      setStatus('正在导出 ' + (i + 1) + '/' + list.length + '：' + it.name + ' …');
+      try {
+        const data = await idbGet('file:' + it.id);
+        if (!data || !data.buf) throw new Error('文件数据不存在');
+        const baseName = String(it.name).split('/').pop().split('\\').pop() || 'audio';
+        const fh = await dir.getFileHandle(baseName, { create: true });
+        const writable = await fh.createWritable();
+        await writable.write(data.buf);
+        await writable.close();
+        exported++;
+      } catch (e) {
+        failed.push(it.name);
+      }
+    }
+    const parts = [];
+    if (exported) parts.push('成功导出 ' + exported + ' 个文件到文件夹');
+    if (failed.length) parts.push('失败 ' + failed.length + ' 个：' + failed.slice(0, 3).join('、') + (failed.length > 3 ? ' 等' : ''));
+    setStatus(parts.join('；') || '未导出任何文件', !failed.length && exported > 0);
+  } catch (e) {
+    if (e && e.name === 'AbortError') setStatus('已取消选择文件夹', false);
+    else setStatus('导出失败：' + (e && e.message || e), false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('btnExport').addEventListener('click', exportToFolder);
 $('file').addEventListener('change', () => {
   if ($('file').files && $('file').files.length) addFiles($('file').files, 'files');
 });

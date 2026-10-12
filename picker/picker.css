@@ -70,3 +70,10 @@ ul.list li .rm {
 }
 ul.list li .rm:hover { color: #c0392b; }
 ul.list li .rm.confirm { color: #c0392b; font-weight: 700; font-size: 12px; }
+.exportBtn {
+  width: 100%; margin-top: 8px; padding: 8px 0;
+  border: 1px solid #1a4f8b; border-radius: 6px; background: #fff;
+  color: #1a4f8b; font-size: 14px; cursor: pointer;
+}
+.exportBtn:hover:not(:disabled) { background: #eaf2fb; }
+.exportBtn:disabled { opacity: .5; cursor: default; }
