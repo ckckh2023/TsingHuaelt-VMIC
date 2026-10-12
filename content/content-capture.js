@@ -81,7 +81,9 @@
   function addItem(url, srcType, duration) {
     if (!url || !/^(https?:|blob:|data:)/i.test(url)) return;
     if (clearedUrls.has(url)) return; // 已被用户清空，不再重新加入
-    if (filterDing && nameOf(url) === 'ding.mp3') return; // 过滤站点提示音 ding.mp3
+    const nm = nameOf(url);
+    if (!nm || nm === 'null' || nm === 'undefined') return; // 过滤无名字音频
+    if (filterDing && nm === 'ding.mp3') return; // 过滤站点提示音 ding.mp3
     if (filterMinSec > 0 && duration != null && !isNaN(duration) && duration > 0 && duration < filterMinSec) return;
     if (items.has(url)) {
       const it = items.get(url);
@@ -89,7 +91,7 @@
       return;
     }
     items.set(url, {
-      url, name: nameOf(url), src: srcType, size: null, mime: '',
+      url, name: nm, src: srcType, size: null, mime: '',
       status: 'idle', err: '', duration: duration || null
     });
     updateBadge();
@@ -260,6 +262,10 @@
     li .tag { flex: none; font-size: 11px; color: #9aa4b5; border: 1px solid #3a4152;
               border-radius: 4px; padding: 1px 5px; }
     li .sz { flex: none; color: #9aa4b5; font-size: 11px; }
+    li .del { flex: none; width: 18px; height: 18px; line-height: 16px; text-align: center;
+              border: none; background: none; color: #9aa4b5; font-size: 13px;
+              cursor: pointer; border-radius: 4px; }
+    li .del:hover { background: #3a4152; color: #ff6b6b; }
     li .ops { margin-top: 6px; display: flex; gap: 6px; align-items: center; }
     li .ops button {
       border: 1px solid #3a4152; background: #2b3140; color: #e8eaf0;
@@ -355,6 +361,18 @@
         if (hd.dataset.act === 'close') togglePanel();
         return;
       }
+      const del = e.target.closest('.row .del');
+      if (del) {
+        const u = del.dataset.url;
+        if (items.has(u)) {
+          if (playingUrl === u) preview(null);
+          clearedUrls.add(u);
+          items.delete(u);
+          updateBadge();
+          if (panelOpen) renderList();
+        }
+        return;
+      }
       const btn = e.target.closest('.ops button');
       if (!btn) return;
       const it = items.get(btn.dataset.url);
@@ -440,6 +458,13 @@
         sz.textContent = fmtKB(it.size);
         row.appendChild(sz);
       }
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.dataset.act = 'del';
+      del.dataset.url = it.url;
+      del.textContent = '✕';
+      del.title = '移除';
+      row.appendChild(del);
       li.appendChild(row);
 
       const ops = document.createElement('div');
