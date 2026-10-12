@@ -183,7 +183,7 @@
       return;
     }
     const sig = await hashBuf(buf);
-    if (audioRaw && sig && sig === state.audioSig) return;
+    if (audioRaw && sig && sig === state.audioSig) { curPlayed = false; return; }
     if (sig && sig !== state.audioSig) curPlayed = false;
     state.audioSig = sig || '';
 
