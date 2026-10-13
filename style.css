@@ -28,7 +28,7 @@ nav {
     text-decoration: none;
     color: #333;
     cursor: pointer;
-    gap: 16px;
+    gap: 4px;
     font-size: 16px;
 
     /*颜色平滑转变*/
@@ -70,10 +70,25 @@ nav {
     border:1px solid #cae7fe;
     background: #cae7fe;
     border-radius: 32px;
-    margin-right: 0px;
+    margin-right: 350px;
     margin-top: 64px;
     margin-bottom: 0;
     padding:8px;
+}
+
+.btn_first{
+    display: flex;
+    width: 200;
+    height: auto;
+    gap: 8px;
+    text-decoration: none;
+
+    margin: 20px 10px;
+    border:1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 10px 30px;
+    justify-content: center;
+    align-items: center;
 }
 
 .title {
@@ -90,11 +105,23 @@ nav {
     margin-top: 16px;
 }
 
-.content {
+.content_x {
     display: flex;
     justify-content: space-between; /* 保持左右两端对齐 */
-    align-items: flex-start;                /*顶部对齐*/
-    gap: 20px;                 /* 左右间距 */
+    align-items: flex-start;                /*顶部对齐*/       
+    border: 1px solid #ffffff;
+
+    margin: 0 auto;
+    margin-top: -10px;
+    max-width: 1000px;
+    min-height: 800;
+    
+}
+
+.content_y {
+    display: flex;
+    justify-content: space-between; /* 保持左右两端对齐 */
+    align-items: flex-start;                /*顶部对齐*/       
     flex-direction: column;
     border: 1px solid #ffffff;
 
@@ -109,8 +136,7 @@ nav {
     font-size: 18px;
     line-height: 1.5;
     margin-top: 16px;
-    width: 250;
-    height: 250;
+
 }
 
 .nav {
@@ -142,6 +168,14 @@ nav {
     display: flex;
     justify-content: flex-end;
     border:1px solid #ffffff;
-    width: 210px;
-    height: 210px;
+    border-radius: 16px;
+
+    border:1px solid #f0f0f0;
+    background-color: #f0f0f0;
+    padding: 20px
+}
+
+.upmove{
+    display: flex;
+    margin-top: -100px;
 }
