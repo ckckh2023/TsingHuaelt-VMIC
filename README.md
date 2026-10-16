@@ -21,7 +21,7 @@
 - 可以在左下角设置按钮调整
 
 > [!CAUTION]
-> 自动连播功能目前仍有部分问题，请谨慎使用，欢迎提交[Issue](https://github.com/ckckh2023/TsingHuaelt-VMIC/issues)
+> 自动连播功能目前仍有部分问题，请谨慎使用，欢迎向我们提交 [Issue](https://github.com/ckckh2023/TsingHuaelt-VMIC/issues)
 
 ### 从网页捕获音频
 
