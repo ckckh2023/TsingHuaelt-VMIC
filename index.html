@@ -38,12 +38,12 @@
   <main id="top">
     <section class="hero">
       <div class="hero-badges reveal">
-        <span class="badge">Chrome / Edge · MV3</span>
+        <span class="badge">Chrome / Edge</span>
         <span class="badge">Chromium ≥ 111</span>
-        <span class="badge badge-acc">开源 · 免费</span>
+        <span class="badge badge-acc">开源免费</span>
       </div>
       <h1 class="hero-title reveal">让网页录音拿到<br><span class="grad-text">本地音频</span>，而非真实麦克风</h1>
-      <p class="hero-desc reveal">在 <code>*.tsinghuaelt.com</code> 与 <code>*.izhixue.cn</code> 站点上，<code>getUserMedia({ audio: true })</code> 将返回你注入的本地音频文件。适用于自动化测试、功能演示与无障碍辅助。</p>
+      <p class="hero-desc reveal">在 <code>*.tsinghuaelt.com</code> 与 <code>*.izhixue.cn</code> 站点上，本插件允许你注入本地音频文件。适用于自动化测试、功能演示与无障碍辅助。</p>
       <div class="hero-cta reveal">
         <a class="btn btn-primary" href="https://github.com/ckckh2023/TsingHuaelt-VMIC/releases/latest" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -93,7 +93,6 @@
 
     <section id="features" class="section">
       <h2 class="sec-title reveal">功能特性</h2>
-      <p class="sec-desc reveal">三层通信 × 双 world 架构，MAIN world 劫持页面 API，ISOLATED world 访问 chrome API。</p>
       <div class="bento">
         <article class="card card-lg reveal">
           <div class="card-icon">
@@ -228,7 +227,7 @@
               <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
               <span class="window-title">快速验证</span>
             </div>
-            <pre><code><span class="c-dim">// 目标页 Console 执行，4 秒后自动下载 vmic-test.webm</span>
+            <pre><code><span class="c-dim">// 目标页 Console 执行，4 秒后将会自动下载 vmic-test.webm</span>
 <span class="c-key">const</span> rec = <span class="c-key">new</span> MediaRecorder(stream), chunks = [];
 rec.ondataavailable = (e) => chunks.push(e.data);
 rec.onstop = () => {
@@ -238,7 +237,7 @@ rec.onstop = () => {
 };
 rec.start(); setTimeout(() => rec.stop(), <span class="c-num">4000</span>);</code></pre>
           </div>
-          <p class="terminal-note">能下载到含插件音频的文件，即链路打通。</p>
+          <p class="terminal-note">能下载到含插件音频的文件即表示链路打通。</p>
         </div>
       </div>
     </section>

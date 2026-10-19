@@ -241,12 +241,12 @@ main { position: relative; z-index: 1; }
 
 /* ---------- 代码窗口 ---------- */
 .terminal {
-  border: 1px solid var(--blue-deep);
+  border: 1px solid #1b1f24;
   border-radius: 14px;
-  background: linear-gradient(160deg, #1e3f6e, #16294a);
+  background: #0d1117;
   overflow: hidden;
   text-align: left;
-  box-shadow: 0 20px 50px -18px rgba(30, 63, 110, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
 }
 .terminal::before {
@@ -287,6 +287,13 @@ pre {
   font-size: 13px;
   line-height: 1.75;
   color: #e4ecf7;
+}
+pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
 }
 pre::-webkit-scrollbar { height: 6px; }
 pre::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
