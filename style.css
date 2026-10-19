@@ -21,7 +21,7 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 74px; }
 
 body {
   background: var(--bg);
@@ -564,15 +564,52 @@ footer {
   .bento { grid-template-columns: 1fr 1fr; }
   .steps { grid-template-columns: 1fr; }
   .usage-grid { grid-template-columns: 1fr; }
-  .nav-links > a:not(.nav-gh) { display: none; }
 }
 
-@media (max-width: 560px) {
-  .hero { padding-top: 130px; }
-  .bento { grid-template-columns: 1fr; }
-  .flow-map { flex-direction: column; }
-  .edge-group { transform: rotate(90deg); height: 36px; }
+@media (max-width: 640px) {
+  .nav-inner { height: 54px; padding: 0 16px; }
+  .nav-links { gap: 15px; }
+  .nav-links > a { font-size: 12.5px; }
+  .nav-gh { padding: 6px 10px; }
+  .nav-gh span { display: none; }
 
+  .hero { padding: 100px 18px 64px; }
+  .hero-badges { gap: 7px; margin-bottom: 22px; }
+  .badge { font-size: 11px; padding: 3px 10px; }
+  .hero-title { font-size: clamp(29px, 8.4vw, 40px); }
+  .hero-desc { font-size: 15px; }
+  .hero-desc code { overflow-wrap: anywhere; }
+  .hero-cta { gap: 10px; margin-bottom: 44px; }
+  .btn { width: 100%; justify-content: center; padding: 13px 20px; }
+
+  .section { padding: 62px 18px 0; }
+  #usage { padding-bottom: 30px; }
+  .sec-title { font-size: clamp(23px, 6.2vw, 28px); }
+  .sec-desc { font-size: 14px; margin-bottom: 30px; }
+
+  .bento { grid-template-columns: 1fr; gap: 12px; }
+  .card, .card-lg:first-child, .card-lg:nth-child(2) { padding: 22px 18px; }
+
+  .flow-map { flex-direction: column; gap: 12px; padding: 22px 16px; }
+  .node { width: 100%; min-width: 0; }
+  .edge-group { display: none; }
+
+  .arch { flex-direction: column; align-items: stretch; gap: 10px; }
+  .arch-step { max-width: none; min-width: 0; padding: 18px; }
+  .arch-arrow { transform: rotate(90deg); align-self: center; }
+
+  .usage-list { gap: 10px; }
+  .usage-list li { font-size: 13.5px; padding: 12px 14px; gap: 10px; }
+  .notice { font-size: 12.5px; padding: 14px 15px; }
+  pre { font-size: 12px; padding: 14px; }
+
+  .footer-inner { flex-direction: column; padding: 26px 18px; }
+  .footer-note { margin-top: 10px; }
+}
+
+@media (max-width: 480px) {
+  .nav-links > a:not(.nav-gh) { display: none; }
+  .hero-title { font-size: clamp(27px, 9vw, 33px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
