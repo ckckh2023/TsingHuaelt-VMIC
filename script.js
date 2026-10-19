@@ -1,14 +1,36 @@
-const btn = document.getElementById("downloadBtn");
-const toast = document.getElementById("toast");
+(function () {
+  'use strict';
 
-btn.addEventListener('chick',function(){
-    btn.innerText = "下载中..."
-    btn.classList.add('active');
+  var nav = document.getElementById('nav');
 
-    toast.classList.add('show')
-    setTimeout(function() {
-        btn.innerText = '下载最新版.zip'; // 恢复文字
-        btn.classList.remove('active');   // 移除灰色状态
-        toast.classList.remove('show');   // 收起提示框
-    }, 2000);
-})
+  function onScroll() {
+    if (window.scrollY > 8) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(function (el) {
+      io.observe(el);
+    });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (el) {
+      el.classList.add('in');
+    });
+  }
+})();

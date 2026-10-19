@@ -1,57 +1,304 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset = "UTF-8">
-    <meta name = "viewport" content = "width=device-width,initial-scale=1.0">
-    <title>关于清英在线 · 虚拟麦克风</title>
-    <link rel = "stylesheet" href = "style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>清英在线 · 虚拟麦克风 (VMIC)</title>
+  <meta name="description" content="让清英在线的网页录音只能拿到本插件注入的本地音频，而非真实麦克风。仅供研究自测使用。">
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <header class = "title"><img class = "icon"src="assets/icon.png" alt="Icon"><p class = "leading-text">清英在线 · 虚拟麦克风</p>
-        <div style="width: 300px;"></div>
-        <nav class = "nav">
-            <a class = "btn btn-borderless" href = "index.html" >首页</a>
-            <a class = "btn btn-borderless" href = "about.html" >关于</a>
-            <a class = "btn btn-borderless" href = "function.html" >功能</a>
-            <a class = "btn btn-borderless" href = "using.html" >使用</a>
-            <a class = "btn btn-borderless" href = "">问题</a>
-            <a class = "btn btn-bordered" href = "https://github.com/ckckh2023/TsingHuaelt-VMIC" style = "font-weight: 600">GitHub</a>
-        </nav>
-    </header>
-    <hr>
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
 
-    <div class = "content_x">
-        <div >
-            <p class = "unrespond">Chrome / Edge 扩展 · 纯本地运行 · MIT 开源</p>
-            <h1 style = "font-size: 48px; margin:12px 0 0 0; ">
-                <pre style = "margin:0">让网页录音
-拿到你的音频文件</pre>
-            </h1>
-        
-            <p class = "text-style" style = "margin-right: 30px" >VMIC 把网页里的麦克风输入替换成本地音频：导入
-                文件、点开始录音，剩下的交给插件。所有音频都留
-                在你的浏览器里，不会上传到任何服务器。
-            </p>
+  <nav id="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+          <path d="M12 18v4"/>
+        </svg>
+        <span>VMIC <span class="brand-ver">v1.2.9</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#how">原理</a>
+        <a href="#install">安装</a>
+        <a href="#usage">使用</a>
+        <a href="#troubleshooting">排障</a>
+        <a class="nav-gh" href="https://github.com/ckckh2023/TsingHuaelt-VMIC" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-badges reveal">
+        <span class="badge">Chrome / Edge · MV3</span>
+        <span class="badge">Chromium ≥ 111</span>
+        <span class="badge badge-acc">开源 · 免费</span>
+      </div>
+      <h1 class="hero-title reveal">让网页录音拿到<br><span class="grad-text">本地音频</span>，而非真实麦克风</h1>
+      <p class="hero-desc reveal">在 <code>*.tsinghuaelt.com</code> 与 <code>*.izhixue.cn</code> 站点上，<code>getUserMedia({ audio: true })</code> 将返回你注入的本地音频文件。适用于自动化测试、功能演示与无障碍辅助。</p>
+      <div class="hero-cta reveal">
+        <a class="btn btn-primary" href="https://github.com/ckckh2023/TsingHuaelt-VMIC/releases" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          下载 Release
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/ckckh2023/TsingHuaelt-VMIC" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m16 18 6-6-6-6"/>
+            <path d="m8 6-6 6 6 6"/>
+          </svg>
+          查看源码
+        </a>
+      </div>
+      <div class="hero-window reveal">
+        <div class="window-bar">
+          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+          <span class="window-title">目标页 Console</span>
         </div>
+        <pre><code><span class="c-dim">// 快速验证：track 应为本地音频</span>
+navigator.mediaDevices.getUserMedia({ audio: <span class="c-key">true</span> })
+  .then(<span class="c-key">async</span> (s) => {
+    console.log(<span class="c-str">'track ='</span>, s.getAudioTracks()[<span class="c-num">0</span>].label);
+  });</code></pre>
+      </div>
+    </section>
 
-        <img class = "card" style = "width: 300px;height: 300px; margin-top: auto; margin:100px 50px 0px 20px;" src = "assets/fengmian.png" alt = "fengmian">
-        
-    </div>
-    <div class = "content_y">
-        <nav class = "nav" style = "justify-content: flex-start;">
-            <div class = "upmove">
-                <a class = "btn_first" style = "color: #ffffff; border-color: #0043fc; background: #0043fc;" href = ""><strong>下载最新版.zip</strong></a>
-                <a class = "btn_first" style = "color:black; background-color: #ffffff;border-color: #333" href = ""><strong>查看安装步骤</strong></a>
+    <section id="features" class="section">
+      <h2 class="sec-title reveal">功能特性</h2>
+      <p class="sec-desc reveal">三层通信 × 双 world 架构，MAIN world 劫持页面 API，ISOLATED world 访问 chrome API。</p>
+      <div class="bento">
+        <article class="card card-lg reveal">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+          </div>
+          <h3>虚拟麦克风注入</h3>
+          <p>包装 <code>getUserMedia</code> / <code>enumerateDevices</code>，录音自动返回音频库中的本地文件，并可自动播放。</p>
+        </article>
+        <article class="card card-lg reveal">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="6"/>
+              <circle cx="12" cy="12" r="2"/>
+            </svg>
+          </div>
+          <h3>网页音频捕获</h3>
+          <p>目标页播放音频时，右下角悬浮球一键捕获，「＋ 加入音频库」后自动设为当前音频。</p>
+        </article>
+        <article class="card reveal">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12h3l2-7 4 14 3-10 2 3h6"/>
+            </svg>
+          </div>
+          <h3>白噪音混音</h3>
+          <p>内置雨声、海浪、溪流、雷雨四种白噪音，可与本地音频混合输出。</p>
+        </article>
+        <article class="card reveal">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M9 9v6"/>
+              <path d="M15 9v6"/>
+            </svg>
+          </div>
+          <h3>持久化音频库</h3>
+          <p><code>chrome.storage.session</code> 管理运行时状态，IndexedDB <code>vmic-db</code> 持久保存音频文件。</p>
+        </article>
+        <article class="card reveal">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>一键切换</h3>
+          <p>设置页关闭「启用注入」即可恢复真实麦克风，点列表行即时切换当前文件。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <h2 class="sec-title reveal">工作原理</h2>
+      <p class="sec-desc reveal">注入的音频经 Web Audio 图混合后，作为伪麦克风流交还给页面。</p>
+      <div class="flow-map reveal">
+        <div class="node">
+          <span class="node-label">本地音频</span>
+          <span class="node-name">recSrc</span>
+        </div>
+        <div class="node">
+          <span class="node-label">白噪音</span>
+          <span class="node-name">noiseSrc</span>
+        </div>
+        <div class="edge-group" aria-hidden="true">
+          <svg viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 10 Q 50 10 100 10" fill="none"/></svg>
+        </div>
+        <div class="node node-mid">
+          <span class="node-label">混合</span>
+          <span class="node-name">recDest</span>
+        </div>
+        <div class="node node-acc">
+          <span class="node-label">输出</span>
+          <span class="node-name">伪麦流</span>
+        </div>
+      </div>
+      <div class="arch reveal">
+        <div class="arch-step">
+          <span class="arch-num">01</span>
+          <h4>扩展页面</h4>
+          <p>popup / settings / picker 管理音频库与设置</p>
+        </div>
+        <svg class="arch-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <div class="arch-step">
+          <span class="arch-num">02</span>
+          <h4>background.js</h4>
+          <p>Service Worker 消息中枢，广播状态到所有标签页</p>
+        </div>
+        <svg class="arch-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <div class="arch-step">
+          <span class="arch-num">03</span>
+          <h4>content scripts</h4>
+          <p>双 world 劫持页面 API，注入伪麦克风流</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="section">
+      <h2 class="sec-title reveal">安装</h2>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-head">
+            <span class="step-num">1</span>
+            <h3>开启开发者模式</h3>
+          </div>
+          <p>打开 <code>chrome://extensions</code> 或 <code>edge://extensions</code>，右上角开启「开发者模式」。</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-head">
+            <span class="step-num">2</span>
+            <h3>加载扩展</h3>
+          </div>
+          <p>下载 Release 压缩包并解压，点击「加载解压缩 / 未打包的扩展」，选择解压后的目录。</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-head">
+            <span class="step-num">3</span>
+            <h3>登录使用</h3>
+          </div>
+          <p>访问 <code>*.tsinghuaelt.com</code> 并登录，扩展即自动生效。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="usage" class="section">
+      <h2 class="sec-title reveal">使用</h2>
+      <div class="usage-grid">
+        <div class="usage-col reveal">
+          <ul class="usage-list">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>导入本地音频，或通过悬浮球从网页捕获音频</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>点列表行切换当前文件</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>点击录音即可自动播放音频</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>左下角设置按钮可调整延时等参数</span>
+            </li>
+          </ul>
+          <div class="notice notice-warn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <p><strong>合规提示：</strong>仅建议用于自控的自动化测试、功能演示、无障碍辅助等场景。代做朗读或口语作业可能违反学校与平台规定，后果自负。</p>
+          </div>
+        </div>
+        <div class="usage-col reveal">
+          <div class="terminal">
+            <div class="window-bar">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+              <span class="window-title">快速验证</span>
             </div>
-        </nav>
+            <pre><code><span class="c-dim">// 目标页 Console 执行，4 秒后自动下载 vmic-test.webm</span>
+<span class="c-key">const</span> rec = <span class="c-key">new</span> MediaRecorder(stream), chunks = [];
+rec.ondataavailable = (e) => chunks.push(e.data);
+rec.onstop = () => {
+  <span class="c-key">const</span> a = document.createElement(<span class="c-str">'a'</span>);
+  a.href = URL.createObjectURL(<span class="c-key">new</span> Blob(chunks));
+  a.download = <span class="c-str">'vmic-test.webm'</span>; a.click();
+};
+rec.start(); setTimeout(() => rec.stop(), <span class="c-num">4000</span>);</code></pre>
+          </div>
+          <p class="terminal-note">能下载到含插件音频的文件，即链路打通。</p>
+        </div>
+      </div>
+    </section>
 
-        <pre style = "margin-left: 10px;margin-top: -20px; color: #333;"><div id="toast" class="toast">✅ 下载成功！</div>
-最新版本 <strong>v1.2.8</strong>   需要 Chromium <strong>111+</strong>   适配 <strong>*.tsinghuaelt.com</strong></pre>
-    
-        <h2 style="font-size: 32px; margin: 50px 0px 0px 0px;">它能做什么</h2>
-        <p style="color: #333;">围绕「网页录音」这一件事做的几个小功能。</p>
-    </div>
-    <script src = "script.js"></script>
+    <section id="troubleshooting" class="section">
+      <h2 class="sec-title reveal">调参与排障</h2>
+      <div class="table-wrap reveal">
+        <table>
+          <thead>
+            <tr><th>现象</th><th>处理</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>录到空白或静音</td><td>确认列表有文件且能解码；确认录音时音频在播；加大「自动延时」</td></tr>
+            <tr><td>点「播放」没声音</td><td>先点页面任意位置授播放权再点播放；仍无声开 F12 查 <code>[VMIC]</code> 报错</td></tr>
+            <tr><td>开头被截断</td><td>调「自动延时」，每类任务试一次</td></tr>
+            <tr><td>检测麦克风时出声</td><td>正常现象，正式录音会从头重播</td></tr>
+            <tr><td>想用真实麦克风</td><td>设置页关闭「启用注入」</td></tr>
+            <tr><td>装好后没效果</td><td>确认 ≥ Chromium 111；<strong>刷新评测页</strong>；Console 确认 <code>getUserMedia</code> 已被包装</td></tr>
+            <tr><td>悬浮球没出现</td><td>重载扩展并强刷页面；Console 过滤 <code>[VMIC CAP]</code> 看是否注入</td></tr>
+            <tr><td>捕获入库失败</td><td>多为跨域受限，列表项会标注；试听不受影响可先听</td></tr>
+            <tr><td>评测页不在匹配域</td><td>改 <code>manifest.json</code> 的 <code>matches</code> 并重载</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="known-edge reveal">已知边界：仅覆盖装了本扩展的浏览器与匹配域名，网站改版后可能失效。</p>
+    </section>
+
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+            <path d="M12 18v4"/>
+          </svg>
+          <span>清英在线 · 虚拟麦克风 (VMIC)</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/ckckh2023/TsingHuaelt-VMIC" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/ckckh2023/TsingHuaelt-VMIC/issues" target="_blank" rel="noopener">Issue</a>
+          <a href="https://github.com/ckckh2023/TsingHuaelt-VMIC/releases" target="_blank" rel="noopener">Releases</a>
+        </div>
+        <p class="footer-note">仅供研究自测使用 · 自动连播功能仍有部分问题，欢迎反馈</p>
+      </div>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
