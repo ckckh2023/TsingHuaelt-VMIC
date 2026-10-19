@@ -16,11 +16,7 @@
   <nav id="nav">
     <div class="nav-inner">
       <a class="brand" href="#top">
-        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="9" y="2" width="6" height="12" rx="3"/>
-          <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-          <path d="M12 18v4"/>
-        </svg>
+        <img class="brand-icon" src="assets/icon.png" alt="VMIC 图标">
         <span>VMIC <span class="brand-ver">v1.2.9</span></span>
       </a>
       <div class="nav-links">
@@ -28,7 +24,7 @@
         <a href="#how">原理</a>
         <a href="#install">安装</a>
         <a href="#usage">使用</a>
-        <a href="#troubleshooting">排障</a>
+
         <a class="nav-gh" href="https://github.com/ckckh2023/TsingHuaelt-VMIC" target="_blank" rel="noopener">
           <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
@@ -65,17 +61,7 @@
           查看源码
         </a>
       </div>
-      <div class="hero-window reveal">
-        <div class="window-bar">
-          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
-          <span class="window-title">目标页 Console</span>
-        </div>
-        <pre><code><span class="c-dim">// 快速验证：track 应为本地音频</span>
-navigator.mediaDevices.getUserMedia({ audio: <span class="c-key">true</span> })
-  .then(<span class="c-key">async</span> (s) => {
-    console.log(<span class="c-str">'track ='</span>, s.getAudioTracks()[<span class="c-num">0</span>].label);
-  });</code></pre>
-      </div>
+
     </section>
 
     <section id="features" class="section">
@@ -256,37 +242,11 @@ rec.start(); setTimeout(() => rec.stop(), <span class="c-num">4000</span>);</cod
       </div>
     </section>
 
-    <section id="troubleshooting" class="section">
-      <h2 class="sec-title reveal">调参与排障</h2>
-      <div class="table-wrap reveal">
-        <table>
-          <thead>
-            <tr><th>现象</th><th>处理</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>录到空白或静音</td><td>确认列表有文件且能解码；确认录音时音频在播；加大「自动延时」</td></tr>
-            <tr><td>点「播放」没声音</td><td>先点页面任意位置授播放权再点播放；仍无声开 F12 查 <code>[VMIC]</code> 报错</td></tr>
-            <tr><td>开头被截断</td><td>调「自动延时」，每类任务试一次</td></tr>
-            <tr><td>检测麦克风时出声</td><td>正常现象，正式录音会从头重播</td></tr>
-            <tr><td>想用真实麦克风</td><td>设置页关闭「启用注入」</td></tr>
-            <tr><td>装好后没效果</td><td>确认 ≥ Chromium 111；<strong>刷新评测页</strong>；Console 确认 <code>getUserMedia</code> 已被包装</td></tr>
-            <tr><td>悬浮球没出现</td><td>重载扩展并强刷页面；Console 过滤 <code>[VMIC CAP]</code> 看是否注入</td></tr>
-            <tr><td>捕获入库失败</td><td>多为跨域受限，列表项会标注；试听不受影响可先听</td></tr>
-            <tr><td>评测页不在匹配域</td><td>改 <code>manifest.json</code> 的 <code>matches</code> 并重载</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="known-edge reveal">已知边界：仅覆盖装了本扩展的浏览器与匹配域名，网站改版后可能失效。</p>
-    </section>
 
     <footer>
       <div class="footer-inner">
         <div class="footer-brand">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="9" y="2" width="6" height="12" rx="3"/>
-            <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-            <path d="M12 18v4"/>
-          </svg>
+          <img class="footer-icon" src="assets/icon.png" alt="">
           <span>清英在线 · 虚拟麦克风 (VMIC)</span>
         </div>
         <div class="footer-links">
