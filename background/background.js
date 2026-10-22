@@ -11,7 +11,7 @@ const DEFAULTS = {
   monitor: true,     // 外放试听
   loop: false,       // 循环播放
   mode: 'auto',      // 自动模式
-  audioSig: '',      // 当前文件源的内容签名
+
   noiseOn: true,     // 启用噪音覆盖
   noiseRandom: true, // 启用随机噪音
   noiseId: 'rain',   // 指定噪音名
