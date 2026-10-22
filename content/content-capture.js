@@ -178,6 +178,16 @@
   }
 
   // ---------- 入库 ----------
+  // chrome 消息通道为 JSON 序列化，入库前需转 base64
+  function abToB64(buf) {
+    const u8 = new Uint8Array(buf);
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < u8.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
 
   async function addToLib(item) {
     item.status = 'busy';
@@ -188,8 +198,8 @@
       if (!r.ok || !(r.buf instanceof ArrayBuffer)) throw new Error(r.error || '获取失败');
       const mime = normMime(r.mime || item.mime, item.name);
       const resp = await chrome.runtime.sendMessage({
-        cmd: 'addFileBuf',
-        file: { buf: r.buf, name: item.name, mime, size: r.buf.byteLength }
+        cmd: 'addFileB64',
+        file: { b64: abToB64(r.buf), name: item.name, mime, size: r.buf.byteLength }
       });
       if (!resp || !resp.ok) throw new Error((resp && resp.error) || '入库被拒绝');
       item.status = 'added';
@@ -477,7 +487,8 @@
       if (it.status === 'failed' && it.err) {
         const err = document.createElement('div');
         err.className = 'err';
-        err.textContent = '失败：' + it.err + '（跨域受限的资源无法捕获）';
+        const crossOrigin = /failed to fetch|networkerror|cors|load failed/i.test(it.err);
+        err.textContent = '失败：' + it.err + (crossOrigin ? '（跨域受限的资源无法捕获）' : '');
         li.appendChild(err);
       }
       listEl.appendChild(li);
