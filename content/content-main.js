@@ -32,6 +32,7 @@
   let curPlayed = false;   // 当前 audioSig 是否已播放过
   let advancing = false;   // maybeAdvance 重入锁
   let playStartTime = 0; // playNow 时间戳，同轮多次 createMediaStreamSource/WebSocket 不重复切
+  let lastAudioSyncAt = 0; // 最近一次收到音频数据的时间（含内容未变的情况，用于识别"没有下一个文件"）
 
   async function maybeAdvance() {
     if (advancing) { dbg('autoContinue: already advancing, skip'); return false; }
@@ -44,11 +45,16 @@
     const _t0 = Date.now();
     try {
       while (Date.now() - _t0 < 2000) {
-        if (state.audioSig !== oldSig && decodeDone && audioBuffer) break;
+        if (state.audioSig !== oldSig) {
+          if (decodeDone) break; // 解码结束（无论成败）即停止等待
+          await waitMs(50);
+          continue;
+        }
+        if (lastAudioSyncAt > _t0) break; // nextFile 的音频已回传但内容未变（列表仅一项/重复内容），无需再等
         await waitMs(50);
       }
       dbg('autoContinue: switched', { newSig: state.audioSig, ok: state.audioSig !== oldSig });
-      return state.audioSig !== oldSig;
+      return state.audioSig !== oldSig && !!audioBuffer;
     } finally {
       advancing = false;
     }
@@ -132,7 +138,9 @@
 
   function applyState(patch) {
     const prev = { ...state };
-    Object.assign(state, patch || {});
+    const p = { ...(patch || {}) };
+    delete p.audioSig; // audioSig 是页面运行时字段，防止被后台快照清空导致自动连播失效
+    Object.assign(state, p);
     dbg('applyState', { patch });
     if (state.enabled === false && prev.enabled === true) stopRec();
     if (state.playbackRate !== prev.playbackRate && recSrc) {
@@ -184,6 +192,7 @@
       return;
     }
     const sig = await hashBuf(buf);
+    lastAudioSyncAt = Date.now();
     if (audioRaw && sig && sig === state.audioSig) { curPlayed = false; return; }
     if (sig && sig !== state.audioSig) curPlayed = false;
     state.audioSig = sig || '';
@@ -512,14 +521,17 @@
             const c = ensureCtx();
             if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (recDest && !recSrc) ensureRecSrc();
-          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < 1500);
+          const graceMs = Math.max(1500, (Number(state.delayMs) || 0) + 800);
+          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < graceMs);
           if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !justStarted))) {
             (async () => {
               const advanced = await maybeAdvance();
-              if (advanced && recSrc) {
-                try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
-                try { recSrc.disconnect(); } catch (_) {}
-                recSrc = null;
+              if (advanced) {
+                if (recSrc) {
+                  try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
+                  try { recSrc.disconnect(); } catch (_) {}
+                  recSrc = null;
+                }
                 ensureRecSrc();
               }
               if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
@@ -544,14 +556,17 @@
           if (c && c.state === 'suspended') c.resume().catch(() => {});
           if (!recDest) { dbg('WS auto: no recDest -> startRecGraph'); startRecGraph(); }
           else if (!recSrc) { dbg('WS auto: recDest alive, no recSrc -> ensureRecSrc'); ensureRecSrc(); }
-          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < 1500);
+          const graceMs = Math.max(1500, (Number(state.delayMs) || 0) + 800);
+          const justStarted = recSrc && recSrc.__started && (Date.now() - playStartTime < graceMs);
           if (recSrc && (!recSrc.__started || (state.autoContinue && curPlayed && !justStarted))) {
             (async () => {
               const advanced = await maybeAdvance();
-              if (advanced && recSrc) {
-                try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
-                try { recSrc.disconnect(); } catch (_) {}
-                recSrc = null;
+              if (advanced) {
+                if (recSrc) {
+                  try { recSrc.__stopping = true; recSrc.stop(); } catch (_) {}
+                  try { recSrc.disconnect(); } catch (_) {}
+                  recSrc = null;
+                }
                 ensureRecSrc();
               }
               if (recSrc && !recSrc.__started) playNow(Number(state.delayMs) || 0);
