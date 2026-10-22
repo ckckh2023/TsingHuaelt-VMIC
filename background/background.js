@@ -35,25 +35,8 @@ async function readCurFile() {
 
 async function getLib() {
   const list = (await idbGet('list')) || [];
-  const cur = await idbGet('cur');
+  const cur = (await idbGet('cur'));
   return { list, currentId: cur };
-}
-
-function bufToB64(buf) {
-  const u8 = new Uint8Array(buf);
-  let bin = '';
-  const CHUNK = 0x8000; // 32768
-  for (let i = 0; i < u8.length; i += CHUNK) {
-    bin += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
-  }
-  return btoa(bin);
-}
-
-function b64ToBuf(b64) {
-  const bin = atob(String(b64 || ''));
-  const u8 = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  return u8.buffer;
 }
 
 // ---------- 状态 ----------
@@ -88,7 +71,7 @@ async function pushToPages(payload) {
 async function pushCurrentAudio() {
   const rec = await readCurFile();
   await pushToPages(rec
-    ? { audio: bufToB64(rec.buf), mime: rec.mime }
+    ? { audio: rec.buf, mime: rec.mime }
     : { clearAudio: true });
 }
 
@@ -108,7 +91,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const rec = await readCurFile();
         sendResponse({
           ok: true,
-          audio: rec ? bufToB64(rec.buf) : null,
+          audio: rec ? rec.buf : null,
           mime: rec ? rec.mime : 'audio/mpeg'
         });
         return;
@@ -133,7 +116,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             return;
           }
         }
-        sendResponse({ ok: true, audio: bufToB64(nrec.buf), mime: nrec.mime || 'audio/mpeg' });
+        sendResponse({ ok: true, audio: nrec.buf, mime: nrec.mime || 'audio/mpeg' });
         return;
       }
       case 'getLib': {
@@ -163,10 +146,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (!msg.silent) await pushCurrentAudio();
         return;
       }
-      case 'addFileB64': {
+      case 'addFileBuf': {
         const f = (msg && msg.file) || {};
-        let buf = null;
-        try { buf = b64ToBuf(f.b64); } catch (_) { buf = null; }
+        const buf = f.buf instanceof ArrayBuffer ? f.buf : null;
         if (!buf || !buf.byteLength) {
           sendResponse({ ok: false, error: 'empty data' });
           return;

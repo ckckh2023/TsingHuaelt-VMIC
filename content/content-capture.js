@@ -167,7 +167,7 @@
       return { ok: true, buf, mime: res.headers.get('content-type') || '' };
     } catch (_) {
       const r = await proxyFetch(url);
-      return r.ok ? { ok: true, b64: r.b64, mime: r.mime } : { ok: false, error: r.error };
+      return r.ok ? { ok: true, buf: r.buf, mime: r.mime } : { ok: false, error: r.error };
     }
   }
 
@@ -178,15 +178,6 @@
   }
 
   // ---------- 入库 ----------
-  function abToB64(buf) {
-    const u8 = new Uint8Array(buf);
-    let bin = '';
-    const CHUNK = 0x8000;
-    for (let i = 0; i < u8.length; i += CHUNK) {
-      bin += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
-    }
-    return btoa(bin);
-  }
 
   async function addToLib(item) {
     item.status = 'busy';
@@ -194,12 +185,11 @@
     renderList();
     try {
       const r = await fetchAudioData(item.url);
-      if (!r.ok) throw new Error(r.error || '获取失败');
-      const b64 = r.buf ? abToB64(r.buf) : r.b64;
+      if (!r.ok || !(r.buf instanceof ArrayBuffer)) throw new Error(r.error || '获取失败');
       const mime = normMime(r.mime || item.mime, item.name);
       const resp = await chrome.runtime.sendMessage({
-        cmd: 'addFileB64',
-        file: { b64, name: item.name, mime, size: Math.floor(b64.length * 3 / 4) }
+        cmd: 'addFileBuf',
+        file: { buf: r.buf, name: item.name, mime, size: r.buf.byteLength }
       });
       if (!resp || !resp.ok) throw new Error((resp && resp.error) || '入库被拒绝');
       item.status = 'added';

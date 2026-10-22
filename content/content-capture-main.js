@@ -7,16 +7,6 @@
 
   let playEl = null; // 试听 <audio>
 
-  function abToB64(buf) {
-    const u8 = new Uint8Array(buf);
-    let bin = '';
-    const CHUNK = 0x8000;
-    for (let i = 0; i < u8.length; i += CHUNK) {
-      bin += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
-    }
-    return btoa(bin);
-  }
-
   function reply(d) {
     window.postMessage({ __vmicCapture: TOKEN, to: 'capture', ...d }, '*');
   }
@@ -32,7 +22,7 @@
         const ab = await res.arrayBuffer();
         reply({
           kind: 'fetchAudio', reqId: d.reqId, ok: true,
-          b64: abToB64(ab), mime: res.headers.get('content-type') || ''
+          buf: ab, mime: res.headers.get('content-type') || ''
         });
       } catch (err) {
         reply({

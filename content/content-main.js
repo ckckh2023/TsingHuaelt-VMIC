@@ -169,11 +169,12 @@
     }
   }
 
-  async function setAudioData(b64) {
+  async function setAudioData(data) {
     let buf = null;
-    if (typeof b64 === 'string' && b64) {
+    if (data instanceof ArrayBuffer) buf = data;
+    else if (typeof data === 'string' && data) {
       try {
-        const bin = atob(b64);
+        const bin = atob(data);
         const u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
         buf = u8.buffer;
@@ -224,12 +225,13 @@
     for (const name of NOISE_NAMES) postToBridge({ kind: 'getNoise', name });
   }
 
-  async function setNoiseData(name, b64) {
+  async function setNoiseData(name, data) {
     if (noiseBuffers[name]) return;
     let buf = null;
-    if (typeof b64 === 'string' && b64) {
+    if (data instanceof ArrayBuffer) buf = data;
+    else if (typeof data === 'string' && data) {
       try {
-        const bin = atob(b64);
+        const bin = atob(data);
         const u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
         buf = u8.buffer;
