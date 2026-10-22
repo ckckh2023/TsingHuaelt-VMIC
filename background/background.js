@@ -58,13 +58,20 @@ function b64ToBuf(b64) {
 
 // ---------- 状态 ----------
 async function readState() {
-  const { state } = await chrome.storage.session.get('state');
-  return { ...DEFAULTS, ...(state || {}) };
+  const { state } = await chrome.storage.local.get('state');
+  if (state) return { ...DEFAULTS, ...state };
+  const { state: legacy } = await chrome.storage.session.get('state');
+  if (legacy) {
+    const merged = { ...DEFAULTS, ...legacy };
+    await chrome.storage.local.set({ state: merged });
+    return merged;
+  }
+  return { ...DEFAULTS };
 }
 
 async function writeState(patch) {
   const next = { ...(await readState()), ...patch };
-  await chrome.storage.session.set({ state: next });
+  await chrome.storage.local.set({ state: next });
   return next;
 }
 
